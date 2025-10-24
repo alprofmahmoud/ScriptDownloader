@@ -10,3 +10,13 @@ lct.txt
 main_sdvb_py.py
 download_manager.py
 downloader.py
+__pycache__/
+*/__pycache__/
+**/__pycache__/
+/utils/__pycache__/
+./utils/__pycache__/*
+url
+urls.txt
+
+
+
