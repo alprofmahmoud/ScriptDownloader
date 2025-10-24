@@ -52,14 +52,14 @@ class LoadURLsFromFile:
 
         urls = self.read_url_from_file()
         for url in urls:
-            self.execute_download_urls_from_file.execute_download(url, yt_opts)
+            self.execute_download_urls_from_file.execute_download(url, yt_opts, self.output_location)
 
     def show_formats_list_urls_from_file(self):
         # Show formats list urls from file
 
         # Download options
         yt_opts_from_url = {
-            'outtmpl': f'$HOME/reels/%(title).100s.%(ext)s',
+            'outtmpl': f'$HOME/{self.output_location}/reels/%(title).100s.%(ext)s',
             'format': 'best',
             'merge_output_format': 'mp4',
             'progress_hooks': [self.execute_download_urls_from_file.download_progress_hook],
@@ -80,10 +80,18 @@ class LoadURLsFromFile:
                 'skip_download': True
                 }
 
+        # Select output location
+        self.output_location = select_output_location()
+        if self.output_location is None:  # User not selected location
+            print("❌ No location selected!")
+            return False
+
         urls = self.read_url_from_file()
         for url in urls:
+            # Show formats list
             self.execute_download_urls_from_file.execute_download(url, yt_opts)
-            self.execute_download_urls_from_file.execute_download(url, yt_opts_from_url)
+            # Download URLs
+            self.execute_download_urls_from_file.execute_download(url, yt_opts_from_url, self.output_location)
        
 # Test functions calls
 #urls = LoadURLsFromFile()

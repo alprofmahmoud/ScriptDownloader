@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import yt_dlp
+import traceback
 from typing import Optional, Dict, Any, List
 from utils.validators import _is_valid_url_format, get_valid_url
 from utils.status_manager import StatusManager
@@ -29,8 +30,11 @@ class SingleDownloader:
             self.download_status = 'finished'
             self.status_manager.update_status_by_url(self.url, self.download_status, self.output_location)
 
-    def execute_download(self, url, yt_opts):
+    def execute_download(self, url, yt_opts, output_location=None):
         # Execute download
+        self.url = url
+        if output_location is not None:
+            self.output_location = output_location
         try:
             with yt_dlp.YoutubeDL(yt_opts) as ydl:
                 ydl.download([url])
@@ -52,6 +56,8 @@ class SingleDownloader:
 
         except Exception as e:
             print(f"Unexpected error: {e}")
+            print("\n🔍 Full traceback:")
+            traceback.print_exc()
             self.download_status = 'error'
             self.status_manager.update_status_by_url(url, self.download_status, self.output_location)
    
