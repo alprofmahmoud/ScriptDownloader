@@ -1,4 +1,6 @@
 #!/bin/env python
+
+import traceback
 from utils.choices import *
 from utils.select_output_location import *
 from single_downloader_mode_sd import SingleDownloader
@@ -35,12 +37,13 @@ def main_load_URLs_from_file():
     # If Condition Load URLs from File
     if option_number == "1":
         print("Show Formats List and Download Option")
-        ob_urls_from_file.show_formats_list_urls_from_file()
+        ob_urls_from_file.show_formats_list_urls_from_file_and_download()
     elif option_number == "2":
         print("Download Best Format")
-        ob_urls_from_file.downloader_from_file()
+        ob_urls_from_file.downloader_from_file_best_format()
     elif option_number == "3":
         print("Format Input Option")
+        ob_urls_from_file.downloader_from_file_with_select_format()
     elif option_number == "r":
         main_other_options()
     else:
@@ -90,6 +93,8 @@ def Main():
         print("\n🛑 Program Stopped")
         return     
     except Exception as e:
+        print("\n🔍 Full traceback:")
+        traceback.print_exc()
         print(f"❌ Unexpected Error Occurred: {e}")
 
 

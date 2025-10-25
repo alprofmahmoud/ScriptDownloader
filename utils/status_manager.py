@@ -32,7 +32,10 @@ class StatusManager:
         max_id = max(entry.get('id', 0) for entry in all_downloads)
         return max_id + 1
 
-    def update_status_by_url(self, url, new_status, output_location=None):
+    def update_status_by_url(self, url, new_status,
+                             output_location=None,
+                             format_id=None,
+                             video_title=None):
         # Update status for existing URL or add new entry if not found
         if not url:
             return
@@ -47,6 +50,8 @@ class StatusManager:
                 if output_location is not None:
                     entry['location'] = output_location
                 found = True
+                entry['format_id'] = format_id
+                entry['video_title'] = video_title
                 break
         
         # If not found, add new entry
@@ -55,7 +60,9 @@ class StatusManager:
                 'id': self._generate_id(),
                 'url': url,
                 'status': new_status,
-                'location': output_location
+                'location': output_location,
+                'format_id': format_id,
+                'video_title': video_title
             })
         # Save back to file
         try:
