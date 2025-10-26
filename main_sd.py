@@ -1,97 +1,76 @@
-#!/bin/env python
+#!/usr/bin/env python3
 
 import traceback
-from utils.choices import *
-from utils.select_output_location import *
+from menu import Menu
+from menu_manager import MenuManager
+from menu_actions import MenuActions
+from playlist_download import PlaylistOption
 from single_downloader_mode_sd import SingleDownloader
 from load_urls_from_file import LoadURLsFromFile
 
-def main_other_options():
-    other_options()
-    print("Select an Option")
-    print("Enter the Selection Number :")
-    option_number =input()
 
-    #If Condition Other Options
-    if option_number == "1":
-        print("Playlist download option")
+def create_menu():
+    downloader = SingleDownloader()
+    url_loader = LoadURLsFromFile()
 
-    elif option_number == "2":
-        print("Load URLs from File")
-        main_load_URLs_from_file()
+    actions = MenuActions(downloader, url_loader)
 
-    elif option_number == "r":
-        Main()
-    else:
-        print("No option")
+    quick_menu = Menu(
+            title="Individual Options",
+            options={
+                "1": "Show Format List",
+                "2": "Quick Download",
+                "3": "Download Thumbnails",
+                "0": "Other Options"
+            },
+            actions={
+                "1": actions.action_show_format,
+                "2": actions.action_quick_download,
+                "3": actions.action_download_thumbnails,
+                "0": actions.go_to_other_options
+            }
+        )
+    other_menu = Menu(
+            title="Other Options",
+            options={
+                "1": "Playlist Download",
+                "2": "Load URLs from File",
+                "r": "Back"
+            },
+            actions={
+                "1": actions.action_playlist_download,
+                "2": lambda: "switch:load from file",
+                "r": actions.go_to_back
+            }
+        )
 
-def main_load_URLs_from_file():
-    # Object from class LoadURLsFromFile
-    ob_urls_from_file = LoadURLsFromFile()
+    load_from_file_menu = Menu(
+            title="Load URLs from File Options",
+            options={
+                "1": "Show Formats and Download",
+                "2": "Download Best Format",
+                "3": "Select Format",
+                "r": "Back"
+            },
+            actions={
+                "1": actions.action_show_formats_from_file,
+                "2": actions.action_download_best_from_file,
+                "3": actions.action_download_with_format,
+                "r": actions.go_to_back
+            }
+        )
+    return quick_menu, other_menu, load_from_file_menu
 
-    load_URLs_from_file()
-    print("Select an Option")
-    print("Enter the Selection Number :")
-    option_number =input()
-
-    # If Condition Load URLs from File
-    if option_number == "1":
-        print("Show Formats List and Download Option")
-        ob_urls_from_file.show_formats_list_urls_from_file_and_download()
-    elif option_number == "2":
-        print("Download Best Format")
-        ob_urls_from_file.downloader_from_file_best_format()
-    elif option_number == "3":
-        print("Format Input Option")
-        ob_urls_from_file.downloader_from_file_with_select_format()
-    elif option_number == "r":
-        main_other_options()
-    else:
-        print("No option")
 
 def Main():
-    # Object from class SingleDownloader
-    downloader = SingleDownloader()
-
     try:
-        individual_options()
-        print("Select an Option")
-        print("Enter the Selection Number :")
-        # Create Object
-        option_number = input()
-        
-        if option_number == "1":
-            print("Quick Download and Best Format Option")
-            downloader.download_single_video()
+        quick_menu, other_menu, load_menu = create_menu()
 
-        elif option_number == "2":
-            print("Show Format Fist and Download Option")
-            downloader.show_format_list()
-            #downloader.download_single_video()
+        manager = MenuManager(quick_menu, other_menu, load_menu)
+        manager.run()
 
-        elif option_number == "3":
-            print("Thumbnails Download Option")
-            print("your location: ",select_output_location())
-
-        elif option_number == "4":
-            print("Show Formats List (Playlist)")
-
-        elif option_number == "5":
-            print("View Download History Option")
-
-        elif option_number == "6":
-            print("Show Incomplete Downloads Option")
-
-        elif option_number == "0":
-            print("Skip Individual Selections")
-            main_other_options()
-
-        else:
-            print("No option")
-            
     except KeyboardInterrupt:
         print("\n🛑 Program Stopped")
-        return     
     except Exception as e:
         print("\n🔍 Full traceback:")
         traceback.print_exc()
