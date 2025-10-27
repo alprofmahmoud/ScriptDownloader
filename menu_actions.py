@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 
 class MenuActions:
-    def __init__(self, downloader, url_loader):
+    def __init__(self, downloader, url_loader, playlist_download):
         self.downloader = downloader
         self.url_loader = url_loader
+        self.playlist_download = playlist_download
 
     def action_show_format(self):
         print("Show Format Fist and Download Option")
@@ -21,6 +22,7 @@ class MenuActions:
 
     def action_playlist_download(self):
         print("Playlist download option")
+        self.playlist_download.playlist_download()
         return None
 
     def action_show_formats_from_file(self):
