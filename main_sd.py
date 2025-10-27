@@ -12,8 +12,9 @@ from load_urls_from_file import LoadURLsFromFile
 def create_menu():
     downloader = SingleDownloader()
     url_loader = LoadURLsFromFile()
+    playlist_download = PlaylistOption()
 
-    actions = MenuActions(downloader, url_loader)
+    actions = MenuActions(downloader, url_loader, playlist_download)
 
     quick_menu = Menu(
             title="Individual Options",
