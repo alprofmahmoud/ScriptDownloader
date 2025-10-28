@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import yt_dlp
+import re
 from typing import Optional
 from utils.validators import _is_valid_url_format, get_valid_url
 from utils.status_manager import StatusManager
@@ -14,36 +15,120 @@ class SingleDownloader:
         self.required_video_quality = None
         self.status_manager = StatusManager('./download_history_file.json')
         self.download_status = None
+        self.percent_str = '0 %'
         self.output_location = None
         self.format_id = None
         self.video_title = None
+        self.total_playlist_videos = None
+
+    def _extract_info(self, d):
+        """Extract common info from download dict"""
+        percent_str_raw = d.get('_percent_str', '0%')
+        percent_str = re.sub(r'\x1b\[[0-9;]*m', '', percent_str_raw).strip()
+        filename = d.get('filename', 'N/A')
+        info_dict = d.get('info_dict') or {}
+        return {
+            'percent_str': percent_str,
+            'filename': filename,
+            'info_dict': info_dict,
+            'playlist_title': info_dict.get('playlist_title'),
+            'playlist_index': info_dict.get('playlist_index'),
+            'playlist_count': info_dict.get('n_entries'),
+            'format_id': info_dict.get('format_id', 'N/A'),
+            'video_title': info_dict.get('title', 'N/A')
+        }
 
     def download_progress_hook(self, d):
         # Progress hook for download updates
         if d['status'] == 'downloading':
+            info = self._extract_info(d)
+            self.percent_str = info['percent_str']
+            filename = info['filename']
+            info_dict = info['info_dict']
+            playlist_title = info['playlist_title']
+            playlist_index = info['playlist_index']
+            playlist_count = info['playlist_count']
             if self.download_status != 'downloading':
                 self.download_status = 'downloading'
-                self.status_manager.update_status_by_url(self.url,
-                                                         self.download_status,
-                                                         self.output_location)
+                self.video_title = info_dict.get('title', 'N/A')
+                self.format_id = info_dict.get('format_id', 'N/A')
+
+            # Update status
+            if playlist_index is None:
+                self.status_manager.update_status_by_url(
+                    self.url,
+                    self.download_status,
+                    self.percent_str,
+                    self.output_location,
+                    self.format_id,
+                    self.video_title
+                    )
+
+            else:
+                video_url = info_dict.get('webpage_url') or \
+                        info_dict.get('url')
+                self.status_manager.update_status_by_url_playlist(
+                    playlist_url=self.url,
+                    video_url=video_url,
+                    new_status=self.download_status,
+                    percent_str=self.percent_str,
+                    output_location=self.output_location,
+                    format_id=self.format_id,
+                    video_title=self.video_title,
+                    extra_info={
+                            'playlist_title': playlist_title,
+                            'filename': filename,
+                            'playlist_index': playlist_index,
+                            'playlist_count': playlist_count,
+                            'total_playlis_videos': self.total_playlist_videos
+                                }
+                    )
 
         elif d['status'] == 'finished':
-            print("✅ Download completed!")
+            print(" ✅ Download completed!")
             self.download_status = 'finished'
-            info = d.get('info_dict', {})
-            self.format_id = info.get('format_id', 'N/A')
-            self.video_title = info.get('title', 'N/A')
-            self.status_manager.update_status_by_url(self.url,
-                                                     self.download_status,
-                                                     self.output_location,
-                                                     self.format_id,
-                                                     self.video_title)
+            info = self._extract_info(d)
+            self.percent_str = info['percent_str']
+            filename = info['filename']
+            info_dict = info['info_dict']
+            playlist_title = info['playlist_title']
+            playlist_index = info['playlist_index']
+            playlist_count = info['playlist_count']
+            self.format_id = info_dict.get('format_id', 'N/A')
+            self.video_title = info_dict.get('title', 'N/A')
+            if playlist_index is None:
+                # Update status
+                self.status_manager.update_status_by_url(
+                    self.url,
+                    self.download_status,
+                    self.percent_str,
+                    self.output_location,
+                    self.format_id,
+                    self.video_title
+                    )
+            else:
+                video_url = info_dict.get('webpage_url') or \
+                        info_dict.get('url')
+                self.status_manager.update_status_by_url_playlist(
+                    playlist_url=self.url,
+                    video_url=video_url,
+                    new_status=self.download_status,
+                    percent_str=self.percent_str,
+                    output_location=self.output_location,
+                    format_id=self.format_id,
+                    video_title=self.video_title,
+                    extra_info={
+                            'playlist_title': playlist_title,
+                            'filename': filename,
+                            'playlist_index': playlist_index,
+                            'playlist_count': playlist_count,
+                            'total_playlist_videos': self.total_playlist_videos
+                                }
+                    )
 
-    def execute_download(self, url, yt_opts, output_location=None):
+    def execute_download(self, url, yt_opts):
         # Execute download
         self.url = url
-        if output_location is not None:
-            self.output_location = output_location
         try:
             with yt_dlp.YoutubeDL(yt_opts) as ydl:
                 ydl.download([url])

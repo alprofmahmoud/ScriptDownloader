@@ -19,14 +19,22 @@ class PlaylistOption:
             print("❌ Invalid URL. Must start with http:// or https://")
             return False
         self.url = url
+        # Extract total videos
+        with yt_dlp.YoutubeDL({'extract_flat': True, 'quiet': True}) as ydl:
+            info = ydl.extract_info(url, download=False)
+            total_videos = len(info.get('entries', []))
+            # Pass total videos to SingleDownloader class
+            self.execute_playlist_download.total_playlist_videos = total_videos
+
         print("Start playlist video number:")
         start_item = input()
         print("End playlist video number:")
         end_item = input()
 
         # Select output location
-        self.output_location = select_output_location()
-        if self.output_location is None:
+        self.execute_playlist_download.output_location \
+            = select_output_location()
+        if self.execute_playlist_download.output_location is None:
             print("❌ No location selected!")
             return False
 
@@ -34,11 +42,12 @@ class PlaylistOption:
             'playliststart': start_item,
             'playlistend': end_item,
             'outtmpl': (
-                f'$HOME/{self.output_location}'
-                f'/%(title).100s.%(ext)s'
+                f'$HOME/{self.execute_playlist_download.output_location}'
+                f'/%(playlist_title)s/%(title).100s.%(ext)s'
                 ),
             'format': 'best',
             'merge_output_format': 'mp4',
+            'quiet': True,
             'embed_metadata': True,
             'progress_hooks': [self.execute_playlist_download
                                .download_progress_hook],
