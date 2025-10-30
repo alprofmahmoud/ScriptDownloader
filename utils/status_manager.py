@@ -186,3 +186,27 @@ class StatusManager:
         if any(s == 'failed' for s in statuses):
             return 'failed'
         return 'queued'
+
+    def query_by_url(self, url):
+        # Query by URL and return location and ID
+        if not url:
+            return None
+        all_downloads = self._read_history()
+        # Search in regular URLs
+        for entry in all_downloads:
+            if entry.get('url') == url:
+                return {
+                    'id': entry.get('id'),
+                    'location': entry.get('location')
+                }
+        # Search in playlist videos
+        for entry in all_downloads:
+            if 'videos' in entry:
+                for video in entry['videos']:
+                    if video.get('url') == url:
+                        return {
+                            'id': entry.get('id'),
+                            'location': video.get('location')
+                        }
+        # URL not found
+        return None
