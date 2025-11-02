@@ -58,8 +58,8 @@ class SingleDownloader:
                 self.status_manager.update_status_by_url(
                     self.url,
                     self.download_status,
-                    self.percent_str,
                     self.output_location,
+                    self.percent_str,
                     self.format_id,
                     self.video_title
                     )
@@ -71,8 +71,8 @@ class SingleDownloader:
                     playlist_url=self.url,
                     video_url=video_url,
                     new_status=self.download_status,
-                    percent_str=self.percent_str,
                     output_location=self.output_location,
+                    percent_str=self.percent_str,
                     format_id=self.format_id,
                     video_title=self.video_title,
                     extra_info={
@@ -101,8 +101,8 @@ class SingleDownloader:
                 self.status_manager.update_status_by_url(
                     self.url,
                     self.download_status,
-                    self.percent_str,
                     self.output_location,
+                    self.percent_str,
                     self.format_id,
                     self.video_title
                     )
@@ -113,8 +113,8 @@ class SingleDownloader:
                     playlist_url=self.url,
                     video_url=video_url,
                     new_status=self.download_status,
-                    percent_str=self.percent_str,
                     output_location=self.output_location,
+                    percent_str=self.percent_str,
                     format_id=self.format_id,
                     video_title=self.video_title,
                     extra_info={
@@ -126,9 +126,11 @@ class SingleDownloader:
                                 }
                     )
 
-    def execute_download(self, url, yt_opts):
+    def execute_download(self, url, yt_opts, output_location=None):
         # Execute download
         self.url = url
+        if output_location is not None:
+            self.output_location = output_location
         try:
             with yt_dlp.YoutubeDL(yt_opts) as ydl:
                 ydl.download([url])
@@ -164,7 +166,7 @@ class SingleDownloader:
     def show_format_list(self, url: Optional[str] = None):
         # Show available formats for a video
         # Get URL from any source
-        url = url or self.url or get_valid_url(allow_quit=True)
+        url = url or get_valid_url(allow_quit=True)
         if url is None:  # User chose exit
             return
         # Validate URL
@@ -172,7 +174,7 @@ class SingleDownloader:
             print("❌ Invalid URL. Must start with http:// or https://")
             return
         # Update self.url
-        self.url = url
+        self.url = None
         yt_opts = {
             'listformats': True,
             'skip_download': True
@@ -184,13 +186,13 @@ class SingleDownloader:
                               required_video_quality: Optional[str] = None):
         # Download a single video
         # Get input if not provided
-        url = url or self.url or get_valid_url(allow_quit=True)
+        url = url or get_valid_url(allow_quit=True)
         if url is None:
             return
         if not _is_valid_url_format(url):
             print("❌ Invalid URL. Must start with http:// or https://")
             return False
-        self.url = url
+        self.url = None
 
         # Set video quality
         # if required_video_quality is None:
@@ -219,6 +221,9 @@ class SingleDownloader:
             'merge_output_format': 'mp4',
             'embed_metadata': True,
             'progress_hooks': [self.download_progress_hook],
+            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)\
+                    AppleWebKit/537.36 (KHTML, like Gecko)\
+                    Chrome/120.0.0.0 Safari/537.36',
             'postprocessors': [{
                 'key': 'MetadataParser',
                 'actions': [

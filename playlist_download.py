@@ -12,13 +12,14 @@ class PlaylistOption:
         self.output_location = None
 
     def playlist_download(self, url=None):
-        url = url or self.url or get_valid_url(allow_quit=True)
+        url = url or get_valid_url(allow_quit=True)
         if url is None:
             return
         if not _is_valid_url_format(url):
             print("❌ Invalid URL. Must start with http:// or https://")
             return False
-        self.url = url
+        self.url = None
+
         # Extract total videos
         with yt_dlp.YoutubeDL({'extract_flat': True, 'quiet': True}) as ydl:
             info = ydl.extract_info(url, download=False)

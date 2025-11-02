@@ -2,18 +2,20 @@
 
 from typing import Optional, Dict, Any, List
 
+
 def _is_valid_url_format(url: str) -> bool:
     # Check if URL has valid format
     if not url:
         return False
-    
     if not url.startswith(('http://', 'https://')):
         return False
-    
     return True
 
+
 def get_valid_url(url: Optional[str] = None,
-                  allow_quit: bool = True) -> Optional[str]:
+                  allow_quit: bool = True,
+                  max_attempts: int = 3
+                  ) -> Optional[str]:
     # Get and validate URL from user or parameter
     # لو URL متمرر
     if url:
@@ -22,20 +24,28 @@ def get_valid_url(url: Optional[str] = None,
         else:
             print("❌ Invalid URL format")
             return None
+    attempt = 0
     # لو URL مش موجود - نطلبه
-    while True:
+    while attempt < max_attempts:
+        attempt += 1
+        if max_attempts > 1:
+            print(f"\n🔄 Attempt {attempt} of {max_attempts}")
         print("Enter URL" + (" (or 'q' to quit)" if allow_quit else "") + ":")
         url = input().strip()
-        
         if allow_quit and url.lower() in ['q', 'quit', 'exit']:
-            return None
-        
+            print("👋 Exiting...")
+            exit()
         if not url:
             print("❌ URL cannot be empty")
+            if attempt < max_attempts:
+                print(f"⚠️  {max_attempts - attempt} attempt(s) remaining")
             continue
-        
         if not _is_valid_url_format(url):
             print("❌ Invalid URL format. Must start with http:// or https://")
-            continue 
+            if attempt < max_attempts:
+                print(f"⚠️  {max_attempts - attempt} attempt(s) remaining")
+            continue
+        print("✅ Valid URL format")
         return url
-   
+    print("👋 Exiting...")
+    exit()
