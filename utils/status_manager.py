@@ -31,8 +31,8 @@ class StatusManager:
         return max_id + 1
 
     def update_status_by_url(self, url, new_status,
-                             percent_str='0%',
                              output_location=None,
+                             percent_str='0%',
                              format_id=None,
                              video_title=None,
                              extra_info=None):
@@ -47,9 +47,9 @@ class StatusManager:
         for entry in all_downloads:
             if entry.get('url') == url:
                 entry['status'] = new_status  # Update status
-                entry['percent_str'] = percent_str
                 if output_location is not None:
                     entry['location'] = output_location
+                entry['percent_str'] = percent_str
                 found = True
                 entry['format_id'] = format_id
                 entry['video_title'] = video_title
@@ -60,8 +60,8 @@ class StatusManager:
                 'id': self._generate_id(),
                 'url': url,
                 'status': new_status,
-                'percent_str': percent_str,
                 'location': output_location,
+                'percent_str': percent_str,
                 'format_id': format_id,
                 'video_title': video_title
             })
@@ -78,8 +78,8 @@ class StatusManager:
                                       playlist_url,
                                       video_url,
                                       new_status,
-                                      percent_str='0%',
                                       output_location=None,
+                                      percent_str='0%',
                                       format_id=None,
                                       video_title=None,
                                       extra_info=None,
