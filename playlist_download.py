@@ -1,14 +1,18 @@
-#!/usr/bin/env python3
 import yt_dlp
-from single_downloader_mode_sd import SingleDownloader
+from download_core import DownloadCore
 from utils.validators import _is_valid_url_format, get_valid_url
-from utils.select_output_location import select_output_location
+from query_manager import QueryManager
+from utils.status_manager import StatusManager
+from display_query import DisplayQuery
 
 
 class PlaylistOption:
     def __init__(self, url=None):
         self.url = url
-        self.execute_playlist_download = SingleDownloader()
+        self.execute_playlist = DownloadCore()
+        self.query_obj = QueryManager()
+        self.status_obj = StatusManager()
+        self.display_obj = DisplayQuery()
         self.output_location = None
 
     def playlist_download(self, url=None):
@@ -20,49 +24,28 @@ class PlaylistOption:
             return False
         self.url = None
 
+        # Show statusbar
+        result = self.query_obj.query_by_url(url)
+        if result is None:
+            new_id = self.status_obj._generate_id()
+            self.display_obj.show_not_found(new_id)
+        else:
+            self.display_obj.show_playlist(result)
         # Extract total videos
         with yt_dlp.YoutubeDL({'extract_flat': True, 'quiet': True}) as ydl:
             info = ydl.extract_info(url, download=False)
             total_videos = len(info.get('entries', []))
             # Pass total videos to SingleDownloader class
-            self.execute_playlist_download.total_playlist_videos = total_videos
-
+            self.execute_playlist.total_playlist_videos = total_videos
         print("Start playlist video number:")
         start_item = input()
         print("End playlist video number:")
         end_item = input()
-
-        # Select output location
-        self.execute_playlist_download.output_location \
-            = select_output_location()
-        if self.execute_playlist_download.output_location is None:
-            print("❌ No location selected!")
-            return False
-
-        yt_opts = {
-            'playliststart': start_item,
-            'playlistend': end_item,
-            'outtmpl': (
-                f'$HOME/{self.execute_playlist_download.output_location}'
-                f'/%(playlist_title)s/%(title).100s.%(ext)s'
-                ),
-            'format': 'best',
-            'merge_output_format': 'mp4',
-            'quiet': True,
-            'embed_metadata': True,
-            'progress_hooks': [self.execute_playlist_download
-                               .download_progress_hook],
-            'postprocessors': [{
-                'key': 'MetadataParser',
-                'actions': [
-                    # First: Delete the specified characters
-                    (yt_dlp.postprocessor.MetadataParserPP.replacer,
-                     'title', r'[|｜❙•\-–—]', ''),
-                    # Second: Clean up extra spaces
-                    (yt_dlp.postprocessor.MetadataParserPP.replacer,
-                     'title', r'\s+', ' ')
-                ],
-                'when': 'pre_process'
-            }]
-            }
-        self.execute_playlist_download.execute_download(url, yt_opts)
+        options = self.execute_playlist._build_download_options()
+        options['playliststart'] = start_item
+        options['playlistend'] = end_item
+        options['outtmpl'] = (options['outtmpl'].replace(
+            '/%(title)s.%(ext)s',
+            '/%(playlist_title)s/%(title)s.%(ext)s'
+            ))
+        self.execute_playlist.execute_core(url, options)

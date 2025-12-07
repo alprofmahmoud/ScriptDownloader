@@ -1,22 +1,21 @@
-#!/usr/bin/env python3
-
 import yt_dlp
 import re
-from typing import Optional
-from utils.validators import _is_valid_url_format, get_valid_url
 from utils.status_manager import StatusManager
-from utils.select_output_location import select_output_location
-from utils.select_format import select_format
+from utils.locations_manager import LocationsManager
+from utils.formats_manager import FormatsManager
+from config import HISTORY_FILE
 
 
-class SingleDownloader:
+class DownloadCore:
     def __init__(self, url=None):
         self.url = url
-        self.required_video_quality = None
-        self.status_manager = StatusManager('./download_history_file.json')
+        self.format_id = None
+        self.status_manager = StatusManager(HISTORY_FILE)
+        self.select_location = LocationsManager()
+        self.select_format = FormatsManager()
         self.download_status = None
         self.percent_str = '0 %'
-        self.output_location = None
+        self.stored_location = None
         self.format_id = None
         self.video_title = None
         self.total_playlist_videos = None
@@ -25,11 +24,9 @@ class SingleDownloader:
         """Extract common info from download dict"""
         percent_str_raw = d.get('_percent_str', '0%')
         percent_str = re.sub(r'\x1b\[[0-9;]*m', '', percent_str_raw).strip()
-        filename = d.get('filename', 'N/A')
         info_dict = d.get('info_dict') or {}
         return {
             'percent_str': percent_str,
-            'filename': filename,
             'info_dict': info_dict,
             'playlist_title': info_dict.get('playlist_title'),
             'playlist_index': info_dict.get('playlist_index'),
@@ -39,15 +36,14 @@ class SingleDownloader:
         }
 
     def download_progress_hook(self, d):
+        info = self._extract_info(d)
+        self.percent_str = info['percent_str']
+        info_dict = info['info_dict']
+        playlist_title = info['playlist_title']
+        playlist_index = info['playlist_index']
+        playlist_count = info['playlist_count']
         # Progress hook for download updates
         if d['status'] == 'downloading':
-            info = self._extract_info(d)
-            self.percent_str = info['percent_str']
-            filename = info['filename']
-            info_dict = info['info_dict']
-            playlist_title = info['playlist_title']
-            playlist_index = info['playlist_index']
-            playlist_count = info['playlist_count']
             if self.download_status != 'downloading':
                 self.download_status = 'downloading'
                 self.video_title = info_dict.get('title', 'N/A')
@@ -58,7 +54,7 @@ class SingleDownloader:
                 self.status_manager.update_status_by_url(
                     self.url,
                     self.download_status,
-                    self.output_location,
+                    self.stored_location,
                     self.percent_str,
                     self.format_id,
                     self.video_title
@@ -71,29 +67,21 @@ class SingleDownloader:
                     playlist_url=self.url,
                     video_url=video_url,
                     new_status=self.download_status,
-                    output_location=self.output_location,
+                    stored_location=self.stored_location,
                     percent_str=self.percent_str,
                     format_id=self.format_id,
                     video_title=self.video_title,
                     extra_info={
                             'playlist_title': playlist_title,
-                            'filename': filename,
                             'playlist_index': playlist_index,
                             'playlist_count': playlist_count,
-                            'total_playlis_videos': self.total_playlist_videos
+                            'total_playlist_videos': self.total_playlist_videos
                                 }
                     )
 
         elif d['status'] == 'finished':
             print(" ✅ Download completed!")
             self.download_status = 'finished'
-            info = self._extract_info(d)
-            self.percent_str = info['percent_str']
-            filename = info['filename']
-            info_dict = info['info_dict']
-            playlist_title = info['playlist_title']
-            playlist_index = info['playlist_index']
-            playlist_count = info['playlist_count']
             self.format_id = info_dict.get('format_id', 'N/A')
             self.video_title = info_dict.get('title', 'N/A')
             if playlist_index is None:
@@ -101,7 +89,7 @@ class SingleDownloader:
                 self.status_manager.update_status_by_url(
                     self.url,
                     self.download_status,
-                    self.output_location,
+                    self.stored_location,
                     self.percent_str,
                     self.format_id,
                     self.video_title
@@ -113,24 +101,39 @@ class SingleDownloader:
                     playlist_url=self.url,
                     video_url=video_url,
                     new_status=self.download_status,
-                    output_location=self.output_location,
+                    stored_location=self.stored_location,
                     percent_str=self.percent_str,
                     format_id=self.format_id,
                     video_title=self.video_title,
                     extra_info={
                             'playlist_title': playlist_title,
-                            'filename': filename,
                             'playlist_index': playlist_index,
                             'playlist_count': playlist_count,
                             'total_playlist_videos': self.total_playlist_videos
                                 }
                     )
 
-    def execute_download(self, url, yt_opts, output_location=None):
+    def execute_core(
+            self,
+            url,
+            yt_opts=None,
+            stored_location=None,
+            format_id=None,
+            location=None
+            ):
         # Execute download
         self.url = url
-        if output_location is not None:
-            self.output_location = output_location
+        if yt_opts is not None:
+            if stored_location is not None:
+                self.stored_location = stored_location
+        else:
+            yt_opts = self._build_download_options(
+                    format_id=format_id,
+                    location=location
+                    )
+        if not yt_opts:
+            print("❌ Failed to build download options")
+            return False
         try:
             with yt_dlp.YoutubeDL(yt_opts) as ydl:
                 ydl.download([url])
@@ -140,102 +143,98 @@ class SingleDownloader:
             self.download_status = 'cancelled'
             self.status_manager.update_status_by_url(url,
                                                      self.download_status,
-                                                     self.output_location)
-
+                                                     self.stored_location)
         except yt_dlp.utils.DownloadError as e:
             print(f"Download error: {e}")
-            self.download_status = 'error'
+            error_message = str(e)
+            # Check error type
+            if 'Private video' in error_message:
+                print(f"❗Skipping private video  {error_message}")
+                self.download_status = 'skipped_private'
+            elif 'Video unavailable' in error_message:
+                print(f"❗Skipping unavailable video {error_message}")
+                self.download_status = 'skipped_unavailable'
+            else:
+                print(f"Download error: {e}")
+                self.download_status = 'error'
             self.status_manager.update_status_by_url(url,
                                                      self.download_status,
-                                                     self.output_location)
+                                                     self.stored_location)
 
         except yt_dlp.utils.ExtractorError as e:
             print(f"Extractor error: {e}")
+            error_message = str(e)
+            # Check error type
+            if 'Private video' in error_message:
+                print(f"❗Skipping private video  {error_message}")
+                self.download_status = 'skipped_private'
+            elif 'Video unavailable' in error_message:
+                print(f"❗Skipping unavailable video {error_message}")
+                self.download_status = 'skipped_unavailable'
+            else:
+                print(f"Extractor error: {e}")
             self.download_status = 'error'
             self.status_manager.update_status_by_url(url,
                                                      self.download_status,
-                                                     self.output_location)
+                                                     self.stored_location)
 
         except Exception as e:
             print(f"Unexpected error: {e}")
             self.download_status = 'error'
             self.status_manager.update_status_by_url(url,
                                                      self.download_status,
-                                                     self.output_location)
+                                                     self.stored_location)
 
-    def show_format_list(self, url: Optional[str] = None):
-        # Show available formats for a video
-        # Get URL from any source
-        url = url or get_valid_url(allow_quit=True)
-        if url is None:  # User chose exit
-            return
-        # Validate URL
-        if not _is_valid_url_format(url):
-            print("❌ Invalid URL. Must start with http:// or https://")
-            return
-        # Update self.url
-        self.url = None
-        yt_opts = {
-            'listformats': True,
-            'skip_download': True
-            }
-        self.execute_download(url, yt_opts)
-        return True
-
-    def download_single_video(self, url: Optional[str] = None,
-                              required_video_quality: Optional[str] = None):
-        # Download a single video
-        # Get input if not provided
-        url = url or get_valid_url(allow_quit=True)
-        if url is None:
-            return
-        if not _is_valid_url_format(url):
-            print("❌ Invalid URL. Must start with http:// or https://")
-            return False
-        self.url = None
-
-        # Set video quality
-        # if required_video_quality is None:
-        self.required_video_quality = select_format()
-        """
-        # else:
-            # self.required_video_quality =
-             'bv*[ext=mp4]+ba[ext=m4a]/bv*+ba/best'
-            # self.required_video_quality =
-            'bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/best'
-            #self.required_video_quality = '298+140'
-            #self.required_video_quality = 'sd'
-        """
+    def _build_download_options(self,
+                                format_override=None,
+                                format_id=None,
+                                location=None
+                                ):
+        format_value = format_id if format_id is not None else \
+                format_override if format_override else self.select_format.select_format()
         # Select output location
-        self.output_location = select_output_location()
-        if self.output_location is None:  # لو المستخدم ألغى الاختيار
+        self.stored_location = location if location is not None else \
+            self.select_location.select_location()
+        if self.stored_location is None:  # If user canceled selection
             print("❌ No location selected!")
             return False
-        # Setup download options
-        yt_opts = {
-            'outtmpl': (
-                f'$HOME/{self.output_location}'
-                f'/%(title).100s.%(ext)s'
-                ),
-            'format': self.required_video_quality,
+
+        return {
+            'format': format_value,
+            'outtmpl': f'$HOME/{self.stored_location}/%(title)s.%(ext)s',
             'merge_output_format': 'mp4',
-            'embed_metadata': True,
+            'no_warnings': True,
+            'ignoreerrors': True,
+            # 'quiet': True,
             'progress_hooks': [self.download_progress_hook],
-            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)\
-                    AppleWebKit/537.36 (KHTML, like Gecko)\
-                    Chrome/120.0.0.0 Safari/537.36',
+
             'postprocessors': [{
                 'key': 'MetadataParser',
                 'actions': [
+                    # Truncate title to 150 characters
+                    (yt_dlp.postprocessor.MetadataParserPP.replacer,
+                     'title', r'^(.{1,150}).*$', '\\1'),
+                    # Remove quotes from title
+                    (yt_dlp.postprocessor.MetadataParserPP.replacer,
+                     'title', r'["\']', ''),
+                    # Remove hashtags, numbers with K, and specific words
+                    (yt_dlp.postprocessor.MetadataParserPP.replacer,
+                     'title',
+                     r'#\S*|\d+\.?\d*K|'
+                     r'\b(views|reactions|subscribers|4k)\b', ''),
                     # First: Delete the specified characters
                     (yt_dlp.postprocessor.MetadataParserPP.replacer,
-                     'title', r'[|｜❙•\-–—]', ''),
+                     'title', r'[|｜❙•·\-–—]', ''),
                     # Second: Clean up extra spaces
                     (yt_dlp.postprocessor.MetadataParserPP.replacer,
-                     'title', r'\s+', ' ')
+                     'title', r'\s+', ' '),
+                    # Remove leading and trailing spaces
+                    (yt_dlp.postprocessor.MetadataParserPP.replacer,
+                     'title', r'^\s+|\s+$', ''),
                 ],
                 'when': 'pre_process'
             }]
             }
-        self.execute_download(url, yt_opts)
-        return True
+
+    def prepare_and_build_options(self, format_id=None):
+        return self._build_download_options(format_override=format_id)

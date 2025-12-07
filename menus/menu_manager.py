@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 import traceback
 
 
@@ -12,8 +10,14 @@ class MenuManager:
     BOLD = '\033[1m'
     RESET = '\033[0m'
 
-    def __init__(self, quick_menu, other_menu, load_from_file_menu):
+    def __init__(self,
+                 quick_menu,
+                 query_menu,
+                 other_menu,
+                 load_from_file_menu
+                 ):
         self.quick_menu = quick_menu
+        self.query_menu = query_menu
         self.other_menu = other_menu
         self.load_from_file_menu = load_from_file_menu
         self.current_menu = "quick"
@@ -23,6 +27,8 @@ class MenuManager:
     def get_current_menu(self):
         if self.current_menu == "quick":
             return self.quick_menu
+        elif self.current_menu == "query":
+            return self.query_menu
         elif self.current_menu == "other":
             return self.other_menu
         elif self.current_menu == "load from file":
@@ -33,7 +39,7 @@ class MenuManager:
     def switch_to(self, menu_name):
         self.menu_stack.append(self.current_menu)
         self.current_menu = menu_name
-        print(f"📋 Switched to {self.CYAN} {menu_name}{self.RESET} menu")
+        print(f"📋 Switched to {self.CYAN}{menu_name}{self.RESET} menu")
 
     def go_back(self):
         if len(self.menu_stack) > 0:
@@ -63,7 +69,7 @@ class MenuManager:
                     menu_name = result.split(":", 1)[1]
                     self.switch_to(menu_name)
                 else:
-                    print(f"⚠️ Unknown result: {result}")
+                    print(f"❗ Unknown result: {result}")
             except KeyboardInterrupt:
                 print("\n🛑 Program interrupted by user")
                 self.running = False

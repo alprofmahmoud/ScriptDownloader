@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-
-from typing import Optional, Dict, Any, List
+from typing import Optional
 
 
 def _is_valid_url_format(url: str) -> bool:
@@ -17,7 +15,7 @@ def get_valid_url(url: Optional[str] = None,
                   max_attempts: int = 3
                   ) -> Optional[str]:
     # Get and validate URL from user or parameter
-    # لو URL متمرر
+    # If URL is passed
     if url:
         if _is_valid_url_format(url):
             return url
@@ -25,7 +23,7 @@ def get_valid_url(url: Optional[str] = None,
             print("❌ Invalid URL format")
             return None
     attempt = 0
-    # لو URL مش موجود - نطلبه
+    # If URL doesn't exist - ask for it
     while attempt < max_attempts:
         attempt += 1
         if max_attempts > 1:
@@ -38,12 +36,12 @@ def get_valid_url(url: Optional[str] = None,
         if not url:
             print("❌ URL cannot be empty")
             if attempt < max_attempts:
-                print(f"⚠️  {max_attempts - attempt} attempt(s) remaining")
+                print(f"❗{max_attempts - attempt} attempt(s) remaining")
             continue
         if not _is_valid_url_format(url):
             print("❌ Invalid URL format. Must start with http:// or https://")
             if attempt < max_attempts:
-                print(f"⚠️  {max_attempts - attempt} attempt(s) remaining")
+                print(f"❗{max_attempts - attempt} attempt(s) remaining")
             continue
         print("✅ Valid URL format")
         return url

@@ -18,3 +18,8 @@ __pycache__/
 url
 urls.txt
 file_test.py
+locations.txt
+/data
+README.md
+extract_info_playlist.py
+

@@ -1,18 +1,17 @@
-#!/usr/bin/env python3
-
 import json
 import os
-from typing import Optional, Dict, Any, List
+from typing import Dict, Any, List
+from config import HISTORY_FILE
 
 
-class StatusManager:
-    def __init__(self, status_file='./download_history_file.json'):
-        self.status_file = status_file
+class HistoryReader:
+    def __init__(self, history_file=HISTORY_FILE):
+        self.history_file = history_file
 
     def _read_history(self) -> List[Dict[str, Any]]:
         # Read existing data
-        if os.path.exists(self.status_file):
-            with open(self.status_file, 'r', encoding='utf-8') as f:
+        if os.path.exists(self.history_file):
+            with open(self.history_file, 'r', encoding='utf-8') as f:
                 try:
                     all_downloads = json.load(f)
                 except json.JSONDecodeError:
@@ -21,6 +20,8 @@ class StatusManager:
             all_downloads = []
         return all_downloads
 
+
+class StatusManager(HistoryReader):
     def _generate_id(self) -> int:
         # Generate sequential ID for new entry
         all_downloads = self._read_history()
@@ -31,7 +32,7 @@ class StatusManager:
         return max_id + 1
 
     def update_status_by_url(self, url, new_status,
-                             output_location=None,
+                             stored_location=None,
                              percent_str='0%',
                              format_id=None,
                              video_title=None,
@@ -47,8 +48,8 @@ class StatusManager:
         for entry in all_downloads:
             if entry.get('url') == url:
                 entry['status'] = new_status  # Update status
-                if output_location is not None:
-                    entry['location'] = output_location
+                if stored_location is not None:
+                    entry['location'] = stored_location
                 entry['percent_str'] = percent_str
                 found = True
                 entry['format_id'] = format_id
@@ -60,14 +61,14 @@ class StatusManager:
                 'id': self._generate_id(),
                 'url': url,
                 'status': new_status,
-                'location': output_location,
+                'location': stored_location,
                 'percent_str': percent_str,
                 'format_id': format_id,
                 'video_title': video_title
             })
         # Save back to file
         try:
-            with open(self.status_file, 'w', encoding='utf-8') as f:
+            with open(self.history_file, 'w', encoding='utf-8') as f:
                 json.dump(all_downloads, f, indent=4, ensure_ascii=False)
             return True
         except IOError as e:
@@ -78,7 +79,7 @@ class StatusManager:
                                       playlist_url,
                                       video_url,
                                       new_status,
-                                      output_location=None,
+                                      stored_location=None,
                                       percent_str='0%',
                                       format_id=None,
                                       video_title=None,
@@ -95,7 +96,7 @@ class StatusManager:
         total_videos = extra_info.get('total_playlist_videos')
         playlist_index = extra_info.get('playlist_index')
         playlist_count = extra_info.get('playlist_count')
-        filename = extra_info.get('filename')
+        percent_playlist = extra_info.get('percent_playlist')
         # Search for URL and update if found
         # Search for playlist entry
         playlist_found = False
@@ -121,10 +122,8 @@ class StatusManager:
                         video['percent_str'] = percent_str
                         video['video_title'] = video_title
                         video['format_id'] = format_id
-                        if output_location:
-                            video['location'] = output_location
-                        if filename:
-                            video['filename'] = filename
+                        if stored_location:
+                            video['location'] = stored_location
                         if playlist_index is not None:
                             video['playlist_index'] = playlist_index
                         video_found = True
@@ -137,8 +136,7 @@ class StatusManager:
                         'status': new_status,
                         'percent_str': percent_str,
                         'format_id': format_id,
-                        'location': output_location,
-                        'filename': filename,
+                        'location': stored_location,
                         'playlist_index': playlist_index
                     })
                 # Update overall playlist status
@@ -153,6 +151,7 @@ class StatusManager:
                 'playlist_title': playlist_title,
                 'total_videos': total_videos,
                 'playlist_count': playlist_count,
+                'percent_playlist': percent_playlist,
                 'status': new_status,
                 'videos': [{
                     'url': video_url,
@@ -160,14 +159,13 @@ class StatusManager:
                     'status': new_status,
                     'percent_str': percent_str,
                     'format_id': format_id,
-                    'location': output_location,
-                    'filename': filename,
+                    'location': stored_location,
                     'playlist_index': playlist_index
                 }]
             })
         # Save back to file
         try:
-            with open(self.status_file, 'w', encoding='utf-8') as f:
+            with open(self.history_file, 'w', encoding='utf-8') as f:
                 json.dump(all_downloads, f, indent=4, ensure_ascii=False)
             return True
         except IOError as e:
@@ -186,27 +184,3 @@ class StatusManager:
         if any(s == 'failed' for s in statuses):
             return 'failed'
         return 'queued'
-
-    def query_by_url(self, url):
-        # Query by URL and return location and ID
-        if not url:
-            return None
-        all_downloads = self._read_history()
-        # Search in regular URLs
-        for entry in all_downloads:
-            if entry.get('url') == url:
-                return {
-                    'id': entry.get('id'),
-                    'location': entry.get('location')
-                }
-        # Search in playlist videos
-        for entry in all_downloads:
-            if 'videos' in entry:
-                for video in entry['videos']:
-                    if video.get('url') == url:
-                        return {
-                            'id': entry.get('id'),
-                            'location': video.get('location')
-                        }
-        # URL not found
-        return None
