@@ -3,7 +3,7 @@ from config import FORMATS_FILE
 
 
 class FormatsManager:
-    MAX_FORMATS = 5  # Maximum saved firmats (excluding default)
+    MAX_FORMATS = 5  # Maximum saved formats (excluding default)
 
     def __init__(self, file_path=FORMATS_FILE):
         self.file_path = file_path

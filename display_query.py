@@ -107,7 +107,7 @@ class DisplayQuery:
         if not downloads_list:
             print("No downloads found with the specified status.")
             return
-        # Math width every colum
+        # Calculate width for every column
         widths = self._calculate_column_widths(downloads_list, has_playlist)
         id_width = widths['id']
         url_width = widths['url']
@@ -122,7 +122,7 @@ class DisplayQuery:
         status_separator = '-' * (status_width + 2)
         percent_separator = '-' * (percent_width + 2)
         if has_playlist:
-            # separator للـ playlist (6 أعمدة)
+            # Build separator for playlist table (6 columns)
             index_separator = '-' * (index_width + 2)
             total_separator = '-' * (total_width + 2)
             separator = (
@@ -160,13 +160,13 @@ class DisplayQuery:
             id_val = item.get('id', 'N/A')
             url = item.get('url') or item.get('playlist_url')
             status = item.get('status', 'N/A')
-            # Check if longer than width cute
+            # Truncate URL if longer than column width
             truncated_url = self._truncate_text(url, url_width)
             if has_playlist and 'playlist_count' in item:
-                # playlist entry
+                # Playlist entry
                 index = item.get('playlist_count') or 'N/A'
                 total = item.get('total_videos') or 'N/A'
-                # ✅ Calculate playlist percentage
+                # Calculate playlist percentage
                 if isinstance(index, (int, float)) and isinstance(
                         total, (int, float)) and total > 0:
                     percentage = (index / total) * 100
@@ -182,7 +182,7 @@ class DisplayQuery:
                     f"| {total:^{total_width}} |"
                 )
             else:
-                # ✅ Use existing data for regular entries
+                # Use existing data for regular entries
                 percent = item.get('percent_str')
                 if has_playlist:
                     row = (
@@ -215,7 +215,6 @@ class DisplayQuery:
     def _create_horizontal_line(self, id_length, width=None):
         if width is None:
             width = self.width
-        # use
         left = '-' * (id_length + 2)
         right = '-' * width
         horizontal_line = f"+{left}+{right}+"
@@ -246,7 +245,7 @@ class DisplayQuery:
                 default_widths['index'] = 8
                 default_widths['total'] = 8
             return default_widths
-        # initialize max length
+        # Initialize max length trackers
         max_id_length = 0
         max_status_length = 0
         max_percent_length = 0
@@ -254,7 +253,7 @@ class DisplayQuery:
         if has_playlist:
             max_index_length = 0
             max_total_length = 0
-        # Calculate lenger ID in data
+        # Calculate the longest value for each column
         for item in downloads_list:
             # 1️⃣ Calculate ID length
             id_val = str(item.get('id', 'N/A'))
@@ -295,10 +294,9 @@ class DisplayQuery:
         max_id_length = max(max_id_length, 2)
         max_status_length = max(max_status_length, 6)
         max_percent_length = max(max_percent_length, 8)
-        # max_url_length = max(max_url_length, 8)
-        # Set width URL
+        # Set URL width with max cap
         url_width = min(max_url_length, 25)
-        # If there's a playlist, ensure minimum width for playlist columns
+        # Ensure minimum width for playlist columns
         if has_playlist:
             max_index_length = max(max_index_length, 8)
             max_total_length = max(max_total_length, 8)
@@ -309,8 +307,7 @@ class DisplayQuery:
             'percent': max_percent_length,
             'url': url_width
         }
-
-        # If there's a playlist, add additional columns
+        # Add playlist columns if needed
         if has_playlist:
             widths['index'] = max_index_length
             widths['total'] = max_total_length

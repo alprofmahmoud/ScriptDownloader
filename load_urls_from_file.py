@@ -82,7 +82,7 @@ class LoadURLsFromFile:
             print(f"Total urls remaining: {total_urls}")
 
     def downloader_from_file_best_format(self):
-        # Downlaod urls from file
+        # Download urls from file
         yt_opts = self.core.prepare_and_build_options(format_id='best')
         url, total_urls = self.read_url_from_file()
         if url is None:
