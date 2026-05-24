@@ -56,15 +56,6 @@ class SingleDownloader:
         else:
             self.display_obj.show_single(result)
 
-        """
-        # else:
-            # self.required_video_quality =
-             'bv*[ext=mp4]+ba[ext=m4a]/bv*+ba/best'
-            # self.required_video_quality =
-            'bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/best'
-            #self.required_video_quality = '298+140'
-            #self.required_video_quality = 'sd'
-        """
         # Setup download options
         # Build base options always
         options = self.core._build_download_options()
