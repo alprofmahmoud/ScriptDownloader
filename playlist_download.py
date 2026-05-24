@@ -37,10 +37,18 @@ class PlaylistOption:
             total_videos = len(info.get('entries', []))
             # Pass total videos to SingleDownloader class
             self.execute_playlist.total_playlist_videos = total_videos
-        print("Start playlist video number:")
-        start_item = input()
-        print("End playlist video number:")
-        end_item = input()
+        try:
+            start_item = int(input("Start playlist video number: "))
+            end_item = int(input("End playlist video number: "))
+            if start_item < 1:
+                print("❌ Start number must be 1 or greater")
+                return False
+            if end_item < start_item:
+                print("❌ End number must be greater than or equal to start number")
+                return False
+        except ValueError:
+            print("❌ Please enter valid numbers")
+            return False
         options = self.execute_playlist._build_download_options()
         options['playliststart'] = start_item
         options['playlistend'] = end_item
