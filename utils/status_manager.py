@@ -2,7 +2,7 @@ import json
 import os
 from typing import Dict, Any, List
 from config import HISTORY_FILE
-
+from filelock import FileLock
 
 class HistoryReader:
     def __init__(self, history_file=HISTORY_FILE):
@@ -30,7 +30,16 @@ class StatusManager(HistoryReader):
         # Get the largest existing ID and add 1 to it
         max_id = max(entry.get('id', 0) for entry in all_downloads)
         return max_id + 1
-
+    def _write_history(self, data):
+        lock = FileLock(self.history_file + ".lock")
+        try:
+            with lock:
+                with open(self.history_file, 'w', encoding='utf-8') as f:
+                    json.dump(data, f, indent=4, ensure_ascii=False)
+            return True
+        except IOError as e:
+            print(f"Error saving file: {e}")
+            return False
     def update_status_by_url(self, url, new_status,
                              stored_location=None,
                              percent_str='0%',
@@ -67,13 +76,7 @@ class StatusManager(HistoryReader):
                 'video_title': video_title
             })
         # Save back to file
-        try:
-            with open(self.history_file, 'w', encoding='utf-8') as f:
-                json.dump(all_downloads, f, indent=4, ensure_ascii=False)
-            return True
-        except IOError as e:
-            print(f"Error saving file: {e}")
-            return False
+        return self._write_history(all_downloads)
 
     def update_status_by_url_playlist(self,
                                       playlist_url,
@@ -164,13 +167,7 @@ class StatusManager(HistoryReader):
                 }]
             })
         # Save back to file
-        try:
-            with open(self.history_file, 'w', encoding='utf-8') as f:
-                json.dump(all_downloads, f, indent=4, ensure_ascii=False)
-            return True
-        except IOError as e:
-            print(f"Error saving file: {e}")
-            return False
+        return self._write_history(all_downloads)
 
     def _calculate_playlist_status(self, videos):
         """Calculate overall playlist status based on videos."""
