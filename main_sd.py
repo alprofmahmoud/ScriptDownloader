@@ -51,7 +51,7 @@ def create_menu():
                 "r": "Back"
                 },
             actions={
-                "1": actions.action_query_all_incompeleted,
+                "1": actions.action_query_all_incompleted,
                 "2": actions.action_query_by_id,
                 "3": actions.action_delete_by_id,
                 "r": actions.go_to_back
