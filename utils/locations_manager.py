@@ -47,7 +47,7 @@ class LocationsManager:
         """
         # Check duplicate
         if new_location in self.locations:
-            print("ocation already exists")
+            print("location already exists")
             return False
         # Check max limit
         if len(self.locations) >= self.MAX_LOCATIONS:

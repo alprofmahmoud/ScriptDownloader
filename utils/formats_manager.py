@@ -43,7 +43,7 @@ class FormatsManager:
         """Add new format - reset if max reached"""
         # Check duplicate
         if new_format in self.formats:
-            print("ocation already exists")
+            print("format already exists")
             return False
         # Check max limit
         if len(self.formats) >= self.MAX_FORMATS:
