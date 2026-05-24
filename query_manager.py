@@ -56,7 +56,6 @@ class QueryManager(HistoryReader):
         return None
 
     def query_by_status(self, status=None, statuses=None):
-        print("History incompleted")
         all_downloads = self._read_history()
         matching_entries = []
         has_playlist = False
