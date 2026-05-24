@@ -3,8 +3,8 @@ import os
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # Other paths
-os.makedirs(DATA_DIR, exist_ok=True)
 DATA_DIR = os.path.join(BASE_DIR, 'data')
+os.makedirs(DATA_DIR, exist_ok=True)
 FORMATS_FILE = os.path.join(DATA_DIR, 'formats.txt')
 LOCATIONS_FILE = os.path.join(DATA_DIR, 'locations.txt')
 HISTORY_FILE = os.path.join(DATA_DIR, 'download_history.json')
