@@ -18,7 +18,7 @@ class MenuActions:
         self.format_obj = FormatsManager()
 
     def action_show_format(self):
-        print("Show Format Fist Option")
+        print("Show Format First Option")
         self.downloader.show_format_list()
         return None
 
@@ -28,7 +28,7 @@ class MenuActions:
         return None
 
     def action_download_thumbnails(self):
-        print("Thumbnails Download Option1")
+        print("Thumbnails Download Option")
         self.downloader.download_and_embed_thumbnails()
         return None
 
@@ -64,7 +64,7 @@ class MenuActions:
         return None
 
     def action_download_by_user_agent(self):
-        print("Download bg User Agent")
+        print("Download by User Agent")
         self.downloader.download_by_user_agent()
         return None
 
