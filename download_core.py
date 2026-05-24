@@ -1,5 +1,6 @@
 import yt_dlp
 import re
+import os
 from utils.status_manager import StatusManager
 from utils.locations_manager import LocationsManager
 from utils.formats_manager import FormatsManager
@@ -201,7 +202,7 @@ class DownloadCore:
 
         return {
             'format': format_value,
-            'outtmpl': f'$HOME/{self.stored_location}/%(title)s.%(ext)s',
+            'outtmpl': os.path.join(os.path.expanduser('~'), self.stored_location, '%(title)s.%(ext)s'),
             'merge_output_format': 'mp4',
             'no_warnings': True,
             'ignoreerrors': True,
