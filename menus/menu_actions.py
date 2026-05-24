@@ -40,7 +40,7 @@ class MenuActions:
             self.downloader.download_single_by_id(url, format_id, location)
         return None
 
-    def action_query_all_incompeleted(self):
+    def action_query_all_incompleted(self):
         print("All incompleted")
         result = self.query_by.query_by_status(
                 statuses=["error", "downloading"]

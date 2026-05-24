@@ -37,14 +37,12 @@ class LocationsManager:
 
     def add_new_location(self, new_location):
         """Add new location - reset if max reached"""
-        """
         # Expand path
         expanded = os.path.expanduser(new_location)
         # Validate path exists
         if not os.path.isdir(expanded):
             print(f"Path doesn't exist: {expanded}")
             return False
-        """
         # Check duplicate
         if new_location in self.locations:
             print("location already exists")

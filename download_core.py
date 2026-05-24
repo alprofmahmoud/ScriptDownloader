@@ -10,7 +10,6 @@ from config import HISTORY_FILE
 class DownloadCore:
     def __init__(self, url=None):
         self.url = url
-        self.format_id = None
         self.status_manager = StatusManager(HISTORY_FILE)
         self.select_location = LocationsManager()
         self.select_format = FormatsManager()
