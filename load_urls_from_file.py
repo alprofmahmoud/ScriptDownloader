@@ -15,7 +15,7 @@ class LoadURLsFromFile:
         self.display_obj = DisplayQuery()
         self.output_location = None
         self.required_video_quality = None
-        self.query_instnce = None
+        self.query_instance = None
 
     def read_url_from_file(self):
         urls = []
@@ -31,7 +31,7 @@ class LoadURLsFromFile:
             else:
                 return None, 0
         except FileNotFoundError:
-            print(f"Not foud {self.urls_file}")
+            print(f"Not found {self.urls_file}")
             return None, 0
         except Exception as e:
             print(f"Error: {e}")
@@ -112,6 +112,7 @@ class LoadURLsFromFile:
         if url is None:
             print("❗ No URLs found in file!")
             return False
+        print(f"Total urls remaining: {total_urls}") 
         while url is not None:
             if not self._validate_url(url):
                 print(f"❗Skipping invalid URL: {url}")
