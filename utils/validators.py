@@ -32,7 +32,7 @@ def get_valid_url(url: Optional[str] = None,
         url = input().strip()
         if allow_quit and url.lower() in ['q', 'quit', 'exit']:
             print("👋 Exiting...")
-            exit()
+            return None
         if not url:
             print("❌ URL cannot be empty")
             if attempt < max_attempts:
@@ -46,4 +46,4 @@ def get_valid_url(url: Optional[str] = None,
         print("✅ Valid URL format")
         return url
     print("👋 Exiting...")
-    exit()
+    return None
