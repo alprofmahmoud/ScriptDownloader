@@ -45,7 +45,7 @@ def create_menu():
     query_menu = Menu(
             title="Actions on Query",
             options={
-                "1": "Show All Incomlpeted Downloads",
+                "1": "Show All Incompleted Downloads",
                 "2": "Download by ID",
                 "3": "Delete by ID",
                 "r": "Back"
@@ -68,7 +68,7 @@ def create_menu():
             actions={
                 "1": actions.action_playlist_download,
                 "2": actions.action_download_by_user_agent,
-                "3": lambda: "switch:load from file",
+                "3": lambda: "switch:load_from_file",
                 "r": actions.go_to_back
             }
         )
