@@ -163,7 +163,7 @@ class DisplayQuery:
             # Check if longer than width cute
             truncated_url = self._truncate_text(url, url_width)
             if has_playlist and 'playlist_count' in item:
-                # ده playlist entry
+                # playlist entry
                 index = item.get('playlist_count') or 'N/A'
                 total = item.get('total_videos') or 'N/A'
                 # ✅ Calculate playlist percentage
@@ -202,7 +202,6 @@ class DisplayQuery:
                     )
             print(row)
         print(separator)
-        # print(downloads_list)
 
     def _truncate_text(self, text, max_length):
         text = str(text)
@@ -247,7 +246,7 @@ class DisplayQuery:
                 default_widths['index'] = 8
                 default_widths['total'] = 8
             return default_widths
-        # initailize max length
+        # initialize max length
         max_id_length = 0
         max_status_length = 0
         max_percent_length = 0
@@ -255,7 +254,7 @@ class DisplayQuery:
         if has_playlist:
             max_index_length = 0
             max_total_length = 0
-        # Math lenger ID in data
+        # Calculate lenger ID in data
         for item in downloads_list:
             # 1️⃣ Calculate ID length
             id_val = str(item.get('id', 'N/A'))
