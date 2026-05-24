@@ -31,7 +31,7 @@ class MenuManager:
             return self.query_menu
         elif self.current_menu == "other":
             return self.other_menu
-        elif self.current_menu == "load from file":
+        elif self.current_menu == "load_from_file":
             return self.load_from_file_menu
         else:
             return None
