@@ -130,10 +130,9 @@ class QueryManager(HistoryReader):
                 print(f"❌ ID {item_id} not found")
                 return False
             # Save updated data
-            with open(self.history_file, 'w', encoding='utf-8') as f:
-                json.dump(updated_data, f, indent=2, ensure_ascii=False)
+            result = self._write_history(updated_data)
             print(f"Deleted item with ID: {item_id}")
-            return True
+            return result
         except ValueError:
             print("❌ Must be a number!")
         except Exception as e:
