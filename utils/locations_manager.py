@@ -33,7 +33,9 @@ class LocationsManager:
 
     def _get_default_location(self):
         """Return fixed default location"""
-        return "Downloads"
+        default = os.path.expanduser("~/Downloads")
+        os.makedirs(default, exist_ok=True)
+        return default
 
     def add_new_location(self, new_location):
         """Add new location - reset if max reached"""
@@ -41,8 +43,12 @@ class LocationsManager:
         expanded = os.path.expanduser(new_location)
         # Validate path exists
         if not os.path.isdir(expanded):
-            print(f"Path doesn't exist: {expanded}")
-            return False
+            try:
+                os.makedirs(expanded, exist_ok=True)
+                print(f"✅ Directory created: {expanded}")
+            except Exception as e:
+                print(f"❗Error creating directory: {e}")
+                return False
         # Check duplicate
         if new_location in self.locations:
             print("location already exists")
