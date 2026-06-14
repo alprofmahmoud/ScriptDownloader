@@ -201,7 +201,7 @@ class DownloadCore:
 
         return {
             'format': format_value,
-            'outtmpl': os.path.join(os.path.expanduser('~'), self.stored_location, '%(title)s.%(ext)s'),
+            'outtmpl': os.path.join(os.path.expanduser('~'), 'Downloads', self.stored_location, '%(title,uploader)s _ %(id)s.%(ext)s'),
             'merge_output_format': 'mp4',
             'no_warnings': True,
             'ignoreerrors': True,
