@@ -32,14 +32,16 @@ def create_menu():
                 "2": "Quick Download",
                 "3": "Download Thumbnails",
                 "4": "Incompleted downloads",
-                "0": "Other Options"
+                "0": "Other Options",
+                "e": "Exit"
             },
             actions={
                 "1": actions.action_show_format,
                 "2": actions.action_quick_download,
                 "3": actions.action_download_thumbnails,
                 "4": actions.action_query_by_status,
-                "0": actions.go_to_other_options
+                "0": actions.go_to_other_options,
+                "e": actions.action_exit
             }
         )
     query_menu = Menu(
@@ -48,13 +50,15 @@ def create_menu():
                 "1": "Show All Incompleted Downloads",
                 "2": "Download by ID",
                 "3": "Delete by ID",
-                "r": "Back"
+                "r": "Back",
+                "e": "Exit"
                 },
             actions={
                 "1": actions.action_query_all_incompleted,
                 "2": actions.action_query_by_id,
                 "3": actions.action_delete_by_id,
-                "r": actions.go_to_back
+                "r": actions.go_to_back,
+                "e": actions.action_exit
                 }
             )
     other_menu = Menu(
@@ -63,13 +67,15 @@ def create_menu():
                 "1": "Playlist Download",
                 "2": "Download by User Agent",
                 "3": "Load URLs from File",
-                "r": "Back"
+                "r": "Back",
+                "e": "Exit"
             },
             actions={
                 "1": actions.action_playlist_download,
                 "2": actions.action_download_by_user_agent,
                 "3": lambda: "switch:load_from_file",
-                "r": actions.go_to_back
+                "r": actions.go_to_back,
+                "e": actions.action_exit
             }
         )
 
