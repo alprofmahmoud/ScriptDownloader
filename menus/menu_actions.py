@@ -1,5 +1,5 @@
 from utils.formats_manager import FormatsManager
-
+from utils.exit_handler import exit_program
 
 class MenuActions:
     def __init__(
@@ -46,6 +46,10 @@ class MenuActions:
                 statuses=["error", "downloading"]
                 )
         self.display_query.show_downloads_table(result)
+        return None
+
+    def action_exit(self):
+        exit_program()
         return None
 
     def action_delete_by_id(self):
