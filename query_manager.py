@@ -22,23 +22,21 @@ class QueryManager(HistoryReader):
         # Search for playlist URLs
         for entry in all_downloads:
             if entry.get('playlist_url') == url:
-                # Find last downloaded video in playlist
-                last_downloaded_index = 0
-                if 'videos' in entry:
-                    for video in entry['videos']:
-                        # Only count finished downloads
-                        if video.get('status') == 'finished':
-                            last_downloaded_index = max(
-                                    last_downloaded_index,
-                                    video.get('playlist_index', 0))
-                # If no videos downloaded, return total videos count
-                if last_downloaded_index == 0:
-                    last_downloaded_index = entry.get('total_videos', 0)
+                videos = entry.get('videos', [])
+                downloaded_count = sum(
+                    1 for v in videos if v.get('status') == 'finished'
+                )
+                # Use the location of any video that already has one saved
+                location = next(
+                    (v.get('location') for v in videos if v.get('location')),
+                    None
+                )
                 return {
                     'id': entry.get('id'),
                     'playlist_title': entry.get('playlist_title'),
                     'total_videos': entry.get('total_videos'),
-                    'playlist_index': last_downloaded_index,
+                    'downloaded_count': downloaded_count,
+                    'location': location,
                     'is_playlist': True
                 }
         # Search in playlist videos
@@ -54,6 +52,11 @@ class QueryManager(HistoryReader):
                         }
         # URL not found
         return None
+
+    def query_by_video_id(self, video_id):
+        """Thin wrapper around HistoryReader.find_by_video_id, used by the
+        pre-download duplicate check."""
+        return self.find_by_video_id(video_id)
 
     def query_by_status(self, status=None, statuses=None):
         all_downloads = self._read_history()
@@ -80,6 +83,17 @@ class QueryManager(HistoryReader):
                 filtered_entry['status'] = entry.get('status', 'N/A')
                 filtered_entry['percent_str'] = entry.get('percent_str', 'N/A')
                 if 'playlist_count' in entry:
+                    # The playlist's overall progress must be based on how
+                    # many of its videos actually finished downloading, not
+                    # on the total video count (playlist_count/total_videos
+                    # are both "totals" and were being divided by each
+                    # other before, which is why progress showed ~100%
+                    # for every playlist regardless of real progress).
+                    videos = entry.get('videos', [])
+                    downloaded_count = sum(
+                        1 for v in videos if v.get('status') == 'finished'
+                    )
+                    filtered_entry['downloaded_count'] = downloaded_count
                     filtered_entry['playlist_count'] = entry.get('playlist_count')
                     filtered_entry['total_videos'] = entry.get('total_videos')
                     has_playlist = True
@@ -130,6 +144,8 @@ class QueryManager(HistoryReader):
                 return False
             # Save updated data
             result = self._write_history(updated_data)
+            # امسح السطر من Supabase كمان (لو مكتوبش هنا، هيرجع تاني عند أول قراءة)
+            self._sync_delete(item_id)
             print(f"Deleted item with ID: {item_id}")
             return result
         except ValueError:

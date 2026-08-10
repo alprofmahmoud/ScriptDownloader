@@ -5,6 +5,7 @@ from download_core import DownloadCore
 from utils.status_manager import StatusManager
 from query_manager import QueryManager
 from display_query import DisplayQuery
+from utils.locations_manager import shorten_path_for_display
 
 
 class SingleDownloader:
@@ -56,9 +57,27 @@ class SingleDownloader:
         else:
             self.display_obj.show_single(result)
 
+        # Probe the video (no download) to get its video_id before starting,
+        # then check whether it was already downloaded before. The same
+        # probed info is reused later in execute_core() so the page is
+        # only fetched/parsed once, not twice.
+        video_info = self.core.probe_video_info(url)
+        video_id = video_info.get('id') if video_info else None
+        if video_id:
+            existing = self.query_object.query_by_video_id(video_id)
+            if existing:
+                location = shorten_path_for_display(
+                    existing.get('location', 'unknown location')
+                )
+                print(
+                    f"Already downloaded (video_id={video_id}) — "
+                    f"stored at: {location}. Skipping download."
+                )
+                return False
+
         # Setup download options
         # Build base options always
-        options = self.core._build_download_options()
+        options = self.core._build_download_options(video_info=video_info)
 
         if not options:
             return False
@@ -72,8 +91,8 @@ class SingleDownloader:
                 existing_processors = options.get('postprocessors', [])
                 options['postprocessors'] = existing_processors + custom_processors
             options.update(custom_copy)
-        # Execute download
-        self.core.execute_core(url, options)
+        # Execute download (reusing the already-probed info, if any)
+        self.core.execute_core(url, options, preloaded_info=video_info)
         return True
 
     def download_single_by_id(self, url, format_id, location):
