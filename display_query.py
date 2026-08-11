@@ -1,4 +1,6 @@
 import re
+from utils.pager import page_text
+from utils.locations_manager import shorten_path_for_display
 
 
 class DisplayQuery:
@@ -30,7 +32,7 @@ class DisplayQuery:
 
     def show_single(self, query_result=None):
         id_val = query_result.get('id', 'N/A')
-        location = query_result.get('location', 'N/A')
+        location = shorten_path_for_display(query_result.get('location', 'N/A'))
         id_length = len(str(id_val))
         status_text = "Found in 📁 "
         content = f"{status_text}{location}"
@@ -42,7 +44,7 @@ class DisplayQuery:
 
     def show_from_file(self, query_result, total_urls):
         id_val = query_result.get('id', 'N/A')
-        location = query_result.get('location', 'N/A')
+        location = shorten_path_for_display(query_result.get('location', 'N/A'))
         id_length = len(str(id_val))
         total_text = f" (Total: {self.GREEN}{total_urls}{self.RESET} URLs)"
         status_text = "Found in 📁 "
@@ -55,16 +57,17 @@ class DisplayQuery:
 
     def show_playlist(self, query_result):
         id_val = query_result.get('id', 'N/A')
-        location = query_result.get('playlist_title', 'N/A')
-        playlist_index = query_result.get('playlist_index', 'N/A')
+        playlist_title = query_result.get('playlist_title', 'N/A')
+        location = query_result.get('location') or 'not chosen yet'
+        downloaded_count = query_result.get('downloaded_count', 0)
         total_videos = query_result.get('total_videos', 'N/A')
         id_length = len(str(id_val))
         status_text = "Found in 📁"
         location_cuting = self._truncate_text(location, 14)
-        colored_index = self._colorize(playlist_index, self.CYAN)
+        colored_downloaded = self._colorize(downloaded_count, self.CYAN)
         colored_total = self._colorize(total_videos, self.GREEN)
-        index_text = f"Playlist {colored_index} of {colored_total}"
-        content = f"{status_text} {location_cuting} {index_text}"
+        index_text = f"{playlist_title}: {colored_downloaded} of {colored_total} downloaded"
+        content = f"{status_text} {location_cuting} — {index_text}"
         length_content = self._get_visible_length(content)
         horizontal_line = self._create_horizontal_line(id_length, width=50)
         padding = self._calculate_padding(length_content, width=50)
@@ -102,11 +105,38 @@ class DisplayQuery:
             print(horizontal_line)
 
     def show_downloads_table(self, query_result):
+        """Print the downloads table directly to the terminal (unchanged
+        behavior)."""
+        lines = self._build_downloads_table_lines(query_result)
+        if lines is None:
+            print("No downloads found with the specified status.")
+            return
+        for line in lines:
+            print(line)
+
+    def page_downloads_table(self, query_result, title=None):
+        """Render the downloads table in the exact same format as
+        show_downloads_table, but display it through a 'less'-style
+        pager instead of printing straight to the terminal. Useful for
+        long histories (e.g. all completed downloads)."""
+        lines = self._build_downloads_table_lines(query_result)
+        if lines is None:
+            print("No downloads found with the specified status.")
+            return
+        text_blocks = []
+        if title:
+            text_blocks.append(f"{self.BOLD}{title}{self.RESET}\n")
+        text_blocks.append("\n".join(lines))
+        page_text("\n".join(text_blocks))
+
+    def _build_downloads_table_lines(self, query_result):
+        """Build the downloads table as a list of formatted lines
+        (same layout/columns/colors as before), without printing them.
+        Returns None if there are no entries to show."""
         downloads_list = query_result.get('entries', [])
         has_playlist = query_result.get('has_playlist', False)
         if not downloads_list:
-            print("No downloads found with the specified status.")
-            return
+            return None
         # Calculate width for every column
         widths = self._calculate_column_widths(downloads_list, has_playlist)
         id_width = widths['id']
@@ -141,7 +171,7 @@ class DisplayQuery:
                 f"| {'URL':^{url_width}} "
                 f"| {'Status':^{status_width}} "
                 f"| {'Progress':^{percent_width}} "
-                f"| {'Index':^{index_width}} "
+                f"| {'Done':^{index_width}} "
                 f"| {'Total':^{total_width}} |"
             )
         else:
@@ -152,9 +182,7 @@ class DisplayQuery:
                 f"| {'Progress':^{percent_width}} |"
                 )
 
-        print(separator)
-        print(header)
-        print(separator)
+        lines = [separator, header, separator]
         for item in downloads_list:
             # Extract info
             id_val = item.get('id', 'N/A')
@@ -163,13 +191,11 @@ class DisplayQuery:
             # Truncate URL if longer than column width
             truncated_url = self._truncate_text(url, url_width)
             if has_playlist and 'playlist_count' in item:
-                # Playlist entry
-                index = item.get('playlist_count') or 'N/A'
-                total = item.get('total_videos') or 'N/A'
-                # Calculate playlist percentage
-                if isinstance(index, (int, float)) and isinstance(
-                        total, (int, float)) and total > 0:
-                    percentage = (index / total) * 100
+                # Playlist entry: progress is downloaded videos / total videos
+                downloaded_count = item.get('downloaded_count', 0)
+                total = item.get('total_videos') or item.get('playlist_count') or 'N/A'
+                if isinstance(total, (int, float)) and total > 0:
+                    percentage = (downloaded_count / total) * 100
                     percent = f"{percentage:.1f}%"
                 else:
                     percent = 'N/A'
@@ -178,7 +204,7 @@ class DisplayQuery:
                     f"| {truncated_url:<{url_width}} "
                     f"| {status:<{status_width}} "
                     f"| {percent:^{percent_width}} "
-                    f"| {index:^{index_width}} "
+                    f"| {downloaded_count:^{index_width}} "
                     f"| {total:^{total_width}} |"
                 )
             else:
@@ -200,8 +226,9 @@ class DisplayQuery:
                         f"| {status:<{status_width}} "
                         f"| {percent:^{percent_width}} |"
                     )
-            print(row)
-        print(separator)
+            lines.append(row)
+        lines.append(separator)
+        return lines
 
     def _truncate_text(self, text, max_length):
         text = str(text)

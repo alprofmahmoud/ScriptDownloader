@@ -46,7 +46,7 @@ class MenuManager:
             self.current_menu = self.menu_stack.pop()
             print("⬅️ Going back...")
         else:
-            print("⬅️ No previous menu. Exiting...")
+            print("⬅️ Already at the main menu.")
             self.running = False
 
     def run(self):
@@ -63,7 +63,6 @@ class MenuManager:
                 elif result == "back":
                     self.go_back()
                 elif result == "exit":
-                    print("👋 Exiting program...")
                     self.running = False
                 elif result.startswith("switch:"):
                     menu_name = result.split(":", 1)[1]
@@ -71,7 +70,7 @@ class MenuManager:
                 else:
                     print(f"❗ Unknown result: {result}")
             except KeyboardInterrupt:
-                print("\n🛑 Program interrupted by user")
+                print("\nInterrupted by user (Ctrl+C).")
                 self.running = False
             except Exception as e:
                 traceback.print_exc()

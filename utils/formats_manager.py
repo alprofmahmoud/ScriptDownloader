@@ -32,8 +32,11 @@ class FormatsManager:
             print(f"❗Error creating file: {e}")
 
     def _get_best_format(self):
-        """Return best format"""
-        return "best"
+        """Return the actual yt-dlp format selector used for the 'best'
+        choice: prefer H.264 (avc1) video + m4a audio, capped at 720p max
+        (never selects a higher resolution even if available), falling
+        back to yt-dlp's own best selection under the same height cap."""
+        return "bv*[vcodec^=avc1][height<=720]+ba[ext=m4a]/bv*[height<=720]+ba/best[height<=720]"
 
     def _get_hd_format(self):
         """Return hd format"""
@@ -79,9 +82,10 @@ class FormatsManager:
             # Build options
             options = {}
             actions = {}
-            # Add best (always first)
+            # Add best (always first) — shown as "best" in the menu, but
+            # the actual value sent to yt-dlp is the full format selector.
             best_format = self._get_best_format()
-            options["1"] = best_format
+            options["1"] = "best"
             actions["1"] = lambda: best_format
             # Add HD (always second)
             hd_format = self._get_hd_format()

@@ -2,6 +2,20 @@ import os
 from config import LOCATIONS_FILE
 
 
+def shorten_path_for_display(path):
+    """Show paths relative to the home folder for readability
+    (e.g. '/data/data/com.termux/files/home/Downloads' -> 'Downloads').
+    Paths outside the home folder are shown in full, unchanged."""
+    if not path:
+        return path
+    home = os.path.expanduser('~')
+    if path == home:
+        return '~'
+    if path.startswith(home + os.sep):
+        return path[len(home) + 1:]
+    return path
+
+
 class LocationsManager:
     MAX_LOCATIONS = 12  # Maximum saved locations (excluding default)
 
@@ -87,13 +101,14 @@ class LocationsManager:
             # Build options
             options = {}
             actions = {}
-            # Add default (always first)
+            # Add default (always first) — shown shortened relative to
+            # home, but the actual returned value is still the full path.
             default = self._get_default_location()
-            options["1"] = default
+            options["1"] = shorten_path_for_display(default)
             actions["1"] = lambda: default
             # Add saved locations
             for i, loc in enumerate(self.locations, 2):
-                options[str(i)] = loc
+                options[str(i)] = shorten_path_for_display(loc)
                 actions[str(i)] = lambda folder=loc: folder
             # Add "Add New" option
             add_key = str(len(self.locations) + 2)
