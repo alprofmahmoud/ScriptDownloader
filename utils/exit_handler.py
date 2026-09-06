@@ -1,6 +1,6 @@
 import sys
 
 def exit_program():
-    """Exit the program safely."""
-    print("\nExiting ScriptDownloader. See you next time!")
+    """Exit the program safely"""
+    print("Exit 🛑")
     sys.exit(0)

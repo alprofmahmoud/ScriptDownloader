@@ -64,7 +64,7 @@ class SubtitleDownloader:
             return False
 
         yt_opts = {
-            'skip_download': True,
+            'skip_download': False,
             'writesubtitles': not is_auto,
             'writeautomaticsubtitles': is_auto,
             'subtitleslangs': [lang],
