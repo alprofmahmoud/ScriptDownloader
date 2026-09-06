@@ -1,8 +1,6 @@
 import yt_dlp
 import re
 import os
-import time
-from datetime import datetime
 from utils.status_manager import StatusManager
 from utils.locations_manager import LocationsManager
 from utils.formats_manager import FormatsManager
@@ -21,6 +19,7 @@ class DownloadCore:
         self.format_id = None
         self.video_title = None
         self.video_id = None
+        self.video_info = None
         self.total_playlist_videos = None
 
     def _extract_info(self, d):
@@ -46,15 +45,13 @@ class DownloadCore:
         playlist_title = info['playlist_title']
         playlist_index = info['playlist_index']
         playlist_count = info['playlist_count']
-        video_id = info['video_id']
         # Progress hook for download updates
         if d['status'] == 'downloading':
             if self.download_status != 'downloading':
                 self.download_status = 'downloading'
                 self.video_title = info_dict.get('title', 'N/A')
                 self.format_id = info_dict.get('format_id', 'N/A')
-            if video_id:
-                self.video_id = video_id
+                self.video_id = info_dict.get('id')
 
             # Update status
             if playlist_index is None:
@@ -93,8 +90,7 @@ class DownloadCore:
             self.download_status = 'finished'
             self.format_id = info_dict.get('format_id', 'N/A')
             self.video_title = info_dict.get('title', 'N/A')
-            if video_id:
-                self.video_id = video_id
+            self.video_id = info_dict.get('id')
             if playlist_index is None:
                 # Update status
                 self.status_manager.update_status_by_url(
@@ -126,93 +122,6 @@ class DownloadCore:
                                 }
                     )
 
-    class _SilentLogger:
-        """Suppresses yt-dlp's own console output during the pre-download
-        probe. Without this, yt-dlp prints its own 'ERROR: ...' line to
-        the console *and* our except block below prints a second, near-
-        identical message for the same failure."""
-        def debug(self, msg):
-            pass
-
-        def warning(self, msg):
-            pass
-
-        def error(self, msg):
-            pass
-
-    def probe_video_info(self, url):
-        """Extract full video metadata without downloading. Used for the
-        pre-download duplicate check, filename collision resolution, and
-        reused later by execute_core() to avoid extracting the same page
-        twice. Returns None on failure (extractor error, unsupported URL,
-        etc.) — callers must treat that as "continue without probing"."""
-        probe_opts = {
-            'quiet': True,
-            'no_warnings': True,
-            'skip_download': True,
-            'noplaylist': True,
-            'logger': self._SilentLogger(),
-        }
-        try:
-            with yt_dlp.YoutubeDL(probe_opts) as ydl:
-                info = ydl.extract_info(url, download=False)
-            return info
-        except Exception as e:  # noqa: BLE001
-            # Keep this short: yt-dlp exception text for some extractors
-            # (e.g. TikTok) includes a long "please report this issue..."
-            # boilerplate that isn't useful here.
-            short_reason = str(e).splitlines()[0].split('; please report')[0]
-            print(f"Could not probe video info before download: {short_reason}")
-            return None
-
-    @staticmethod
-    def _upload_date_to_epoch_seconds(upload_date):
-        """Convert yt-dlp's upload_date ('YYYYMMDD') to epoch seconds.
-        Falls back to the current time if the date is missing/invalid."""
-        if upload_date:
-            try:
-                dt = datetime.strptime(upload_date, '%Y%m%d')
-                return int(dt.timestamp())
-            except ValueError:
-                pass
-        return int(time.time())
-
-    def _resolve_outtmpl(self, video_info, stored_location):
-        """Build the output template. If a file matching the default naming
-        scheme already exists on disk (but the video was not found in
-        history), disambiguate the filename using uploader + upload_date
-        (as epoch seconds) instead of overwriting it."""
-        base_dir = os.path.join(
-            os.path.expanduser('~'), 'Downloads', stored_location
-        )
-        default_template = '%(title,uploader)s _ %(id)s.%(ext)s'
-
-        if not video_info:
-            return os.path.join(base_dir, default_template)
-
-        title = video_info.get('title') or 'NA'
-        video_id = video_info.get('id') or 'NA'
-        ext = video_info.get('ext') or 'mp4'
-        default_filename = f"{title} _ {video_id}.{ext}"
-        default_path = os.path.join(base_dir, default_filename)
-
-        if os.path.exists(default_path):
-            uploader = video_info.get('uploader') or 'NA'
-            epoch_seconds = self._upload_date_to_epoch_seconds(
-                video_info.get('upload_date')
-            )
-            disambiguated_template = (
-                f"%(title)s _ {uploader}_{epoch_seconds}.%(ext)s"
-            )
-            print(
-                "A file with the same name already exists locally "
-                "(not tracked in history) — renaming using uploader + "
-                "upload timestamp to avoid overwriting it."
-            )
-            return os.path.join(base_dir, disambiguated_template)
-
-        return os.path.join(base_dir, default_template)
-
     def execute_core(
             self,
             url,
@@ -238,19 +147,11 @@ class DownloadCore:
         try:
             with yt_dlp.YoutubeDL(yt_opts) as ydl:
                 if preloaded_info is not None:
-                    try:
-                        # Reuse the info we already extracted during the
-                        # pre-download probe instead of fetching/parsing
-                        # the page again — this is what was making every
-                        # download noticeably slower.
-                        ydl.process_ie_result(preloaded_info, download=True)
-                    except Exception:
-                        # Cached info can go stale (e.g. expired CDN links
-                        # on sites like TikTok/Instagram) if time passed
-                        # between the probe and the actual download (menus,
-                        # user input, etc). Fall back to a fresh extraction.
-                        print("Cached video info could not be reused, re-fetching before download...")
-                        ydl.download([url])
+                    # Info was already extracted earlier (e.g. via
+                    # probe_video_info) - reprocess it directly
+                    # instead of re-fetching/re-parsing the same
+                    # page/API response a second time.
+                    ydl.process_ie_result(preloaded_info, download=True)
                 else:
                     ydl.download([url])
 
@@ -301,14 +202,50 @@ class DownloadCore:
                                                      self.download_status,
                                                      self.stored_location)
 
+    def probe_video_info(self, url):
+        """
+        Extract video metadata without downloading (a 'dry run'),
+        so callers can check things like the video's real ID before
+        committing to a download - e.g. to detect it was already
+        downloaded before.
+
+        Returns the yt-dlp info dict on success, or None on failure.
+        Failures here (network errors, private/unavailable video,
+        etc.) are swallowed silently - a real download attempt
+        afterwards will surface the actual error to the user, so
+        probing is best-effort and never blocks the download itself.
+        """
+        probe_opts = {
+            'quiet': True,
+            'no_warnings': True,
+            'skip_download': True,
+        }
+        try:
+            with yt_dlp.YoutubeDL(probe_opts) as ydl:
+                return ydl.extract_info(url, download=False)
+        except Exception as e:
+            print(f"⚠️ Couldn't probe video info before download: {e}")
+            return None
+
     def _build_download_options(self,
                                 format_override=None,
                                 format_id=None,
                                 location=None,
                                 video_info=None
                                 ):
+        # Keep a reference to any already-probed info (e.g. from
+        # probe_video_info) for callers that want to reuse it; not
+        # required for building the options themselves.
+        if video_info is not None:
+            self.video_info = video_info
         format_value = format_id if format_id is not None else \
                 format_override if format_override else self.select_format.select_format()
+        # Translate the selected quality preset (e.g. '720p') into an
+        # actual yt-dlp format selector + optional format_sort rule.
+        # Works the same for a raw/custom format string too (passed
+        # straight through), so resuming an old download from history
+        # still behaves exactly as before.
+        format_selector, format_sort = FormatsManager.resolve(format_value)
         # Select output location
         self.stored_location = location if location is not None else \
             self.select_location.select_location()
@@ -316,9 +253,9 @@ class DownloadCore:
             print("❌ No location selected!")
             return False
 
-        return {
-            'format': format_value,
-            'outtmpl': self._resolve_outtmpl(video_info, self.stored_location),
+        options = {
+            'format': format_selector,
+            'outtmpl': os.path.join(os.path.expanduser('~'), 'Downloads', self.stored_location, '%(title,uploader)s _ %(id)s.%(ext)s'),
             'merge_output_format': 'mp4',
             'no_warnings': True,
             'ignoreerrors': True,
@@ -352,6 +289,11 @@ class DownloadCore:
                 'when': 'pre_process'
             }]
             }
+
+        if format_sort:
+            options['format_sort'] = format_sort
+
+        return options
 
     def prepare_and_build_options(self, format_id=None):
         return self._build_download_options(format_override=format_id)

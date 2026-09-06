@@ -1,127 +1,95 @@
-import os
-from config import FORMATS_FILE
+# Raw yt-dlp format IDs (e.g. '137', 'h264_540p_299944-0') are NOT
+# stable across videos or platforms — Facebook and TikTok generate a
+# new random ID per video, so letting the user pick/save one and
+# reuse it breaks on the very next download. Quality tiers instead
+# translate to a yt-dlp format *selector* + a 'format_sort' rule,
+# which yt-dlp re-resolves dynamically against whatever formats the
+# current video/platform actually has.
+#
+# 'res:<n>' in format_sort works for both landscape and portrait
+# video (YouTube vs. Facebook Reels / TikTok) because yt-dlp compares
+# against the meaningful dimension either way, instead of a strict
+# 'height<=n' filter which would silently match nothing on portrait
+# video (e.g. TikTok's 576x1024 has height=1024, not <=720).
+# 'proto' as a tiebreaker prefers direct/https formats over m3u8
+# streaming formats, which tends to be more stable to download.
+QUALITY_PRESETS = {
+    "best": {
+        "label": "Best Available Quality",
+        "format": "bv*+ba/b",
+        "sort": None,
+    },
+    "720p": {
+        "label": "Medium Quality (720p) - Recommended",
+        "format": "bv*+ba/b",
+        "sort": ["res:720", "proto"],
+    },
+    "480p": {
+        "label": "Low Quality (480p) - Saves Space",
+        "format": "bv*+ba/b",
+        "sort": ["res:480", "proto"],
+    },
+    "audio": {
+        "label": "Audio Only",
+        "format": "ba/b",
+        "sort": None,
+    },
+}
 
 
 class FormatsManager:
-    MAX_FORMATS = 5  # Maximum saved formats (excluding default)
-
-    def __init__(self, file_path=FORMATS_FILE):
-        self.file_path = file_path
-        self.formats = self._load_formats()
-
-    def _load_formats(self):
-        """Load formats from file"""
-        if not os.path.exists(self.file_path):
-            self._create_default_file()
-        try:
-            with open(self.file_path, 'r', encoding='utf-8') as file:
-                lines = file.readlines()
-            formats = [line.strip() for line in lines if line.strip()]
-            return formats if formats else []
-        except Exception as e:
-            print(f"❗Error reading formats: {e}")
-            return []
-
-    def _create_default_file(self):
-        """Create empty format file"""
-        try:
-            with open(self.file_path, 'w', encoding='utf-8') as _:
-                pass  # Empty file
-            print(f"✅ Created formats file: {self.file_path}")
-        except Exception as e:
-            print(f"❗Error creating file: {e}")
-
-    def _get_best_format(self):
-        """Return the actual yt-dlp format selector used for the 'best'
-        choice: prefer H.264 (avc1) video + m4a audio, capped at 720p max
-        (never selects a higher resolution even if available), falling
-        back to yt-dlp's own best selection under the same height cap."""
-        return "bv*[vcodec^=avc1][height<=720]+ba[ext=m4a]/bv*[height<=720]+ba/best[height<=720]"
-
-    def _get_hd_format(self):
-        """Return hd format"""
-        return "hd"
-
-    def add_new_format(self, new_format):
-        """Add new format - reset if max reached"""
-        # Check duplicate
-        if new_format in self.formats:
-            print("format already exists")
-            return False
-        # Check max limit
-        if len(self.formats) >= self.MAX_FORMATS:
-            print(
-                    f"❗Max formats reached ({self.MAX_FORMATS}). "
-                    f"Resetting...")
-            self._reset_file()
-        try:
-            # Append to file
-            with open(self.file_path, 'a', encoding='utf-8') as file:
-                file.write(new_format + '\n')
-            # Add to memory
-            self.formats.append(new_format)
-            print(f"✅ Format added: {new_format}")
-            return True
-        except Exception as e:
-            print(f"❗Error adding format: {e}")
-            return False
-
-    def _reset_file(self):
-        """Clear file and reset formats"""
-        try:
-            with open(self.file_path, 'w', encoding='utf-8') as _:
-                pass  # Empty file
-            self.formats = []
-            print("🔄 Formats reset")
-        except Exception as e:
-            print(f"❗Error resetting file: {e}")
 
     def select_format(self):
-        """Display menu and return selected format"""
+        """Display the quality menu and return the selected preset
+        key (e.g. '720p'), or a custom raw format string typed
+        manually via the advanced option."""
+        options = {}
+        actions = {}
+        for i, (key, preset) in enumerate(QUALITY_PRESETS.items(), 1):
+            options[str(i)] = preset["label"]
+            actions[str(i)] = (lambda k=key: k)
+        custom_key = str(len(QUALITY_PRESETS) + 1)
+        options[custom_key] = "Advanced: Enter Format ID Manually"
+        actions[custom_key] = self._prompt_custom_format
+        from menus.menu import Menu
+        format_menu = Menu(
+            title="Select Quality",
+            options=options,
+            actions=actions
+        )
         while True:
-            # Build options
-            options = {}
-            actions = {}
-            # Add best (always first) — shown as "best" in the menu, but
-            # the actual value sent to yt-dlp is the full format selector.
-            best_format = self._get_best_format()
-            options["1"] = "best"
-            actions["1"] = lambda: best_format
-            # Add HD (always second)
-            hd_format = self._get_hd_format()
-            options["2"] = hd_format
-            actions["2"] = lambda: hd_format
-            # Add saved format
-            for i, format_id in enumerate(self.formats, 3):
-                options[str(i)] = format_id
-                actions[str(i)] = lambda format_=format_id: format_
-            # Add "Add New" option
-            add_key = str(len(self.formats) + 3)
-            options[add_key] = "Add New Format ID"
-            actions[add_key] = self._prompt_new_format
-            # Display menu
-            from menus.menu import Menu
-            format_menu = Menu(
-                title="Select Format ID",
-                options=options,
-                actions=actions
-            )
             result = format_menu.run()
-            # Validate result
+            # Loop only on an invalid/empty choice
             if result:
                 return result
-            # Loop if invalid choice
 
-    def _prompt_new_format(self):
-        """Prompt user for new format"""
-        print("="*38)
-        print(f"{' '*10}Add New Format ID")
-        print("="*38)
-        new_format = input("Enter format ID: ").strip()
-        if not new_format:
-            print("❌ No format entered")
+    def _prompt_custom_format(self):
+        """One-off manual format ID / yt-dlp format selector, for
+        advanced use. Intentionally NOT saved for reuse, since raw
+        format IDs are video-specific on most platforms."""
+        header = "=" * 38 + f"\n{' ' * 5}Enter Format ID / Selector Manually\n" + "=" * 38
+        print(header)
+        custom_format = input("Enter Format ID or selector: ").strip()
+        if not custom_format:
+            print("❌ No value entered")
             return None
-        # Add format ID
-        if self.add_new_format(new_format):
-            return new_format  # Return new format
-        return None  # Failed - loop again
+        return custom_format
+
+    @staticmethod
+    def resolve(format_value):
+        """
+        Translate a value returned by select_format() into the
+        actual yt-dlp 'format' selector plus an optional
+        'format_sort' list.
+
+        Known quality-preset keys ('best' / '720p' / '480p' /
+        'audio') are translated via QUALITY_PRESETS. Anything else —
+        a manually-entered raw format ID/selector, or a legacy value
+        already stored in download history from before this change
+        (e.g. an old saved 'hd') — is passed straight through to
+        yt-dlp untouched, exactly like before.
+        """
+        preset = QUALITY_PRESETS.get(format_value)
+        if preset:
+            return preset["format"], preset["sort"]
+        return format_value, None
