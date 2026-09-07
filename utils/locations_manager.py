@@ -2,25 +2,18 @@ import os
 from config import LOCATIONS_FILE
 
 
-def shorten_path_for_display(path, max_len=40):
-    """
-    Shorten a filesystem path for display purposes: replace the
-    user's home directory with '~', and if it's still too long, keep
-    only the last couple of path segments prefixed with '...'.
-    Used e.g. when telling the user where a duplicate video was
-    already downloaded to, without printing a long absolute path.
-    """
+def shorten_path_for_display(path):
+    """Show paths relative to the home folder for readability
+    (e.g. '/data/data/com.termux/files/home/Downloads' -> 'Downloads').
+    Paths outside the home folder are shown in full, unchanged."""
     if not path:
         return path
-    home = os.path.expanduser("~")
-    if path.startswith(home):
-        path = "~" + path[len(home):]
-    if len(path) <= max_len:
-        return path
-    parts = path.split(os.sep)
-    if len(parts) <= 2:
-        return path
-    return os.sep.join(["...", *parts[-2:]])
+    home = os.path.expanduser('~')
+    if path == home:
+        return '~'
+    if path.startswith(home + os.sep):
+        return path[len(home) + 1:]
+    return path
 
 
 class LocationsManager:
@@ -108,13 +101,14 @@ class LocationsManager:
             # Build options
             options = {}
             actions = {}
-            # Add default (always first)
+            # Add default (always first) — shown shortened relative to
+            # home, but the actual returned value is still the full path.
             default = self._get_default_location()
-            options["1"] = default
+            options["1"] = shorten_path_for_display(default)
             actions["1"] = lambda: default
             # Add saved locations
             for i, loc in enumerate(self.locations, 2):
-                options[str(i)] = loc
+                options[str(i)] = shorten_path_for_display(loc)
                 actions[str(i)] = lambda folder=loc: folder
             # Add "Add New" option
             add_key = str(len(self.locations) + 2)

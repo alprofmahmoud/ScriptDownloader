@@ -8,18 +8,25 @@ class MenuActions:
             query_by,
             display_query,
             url_loader,
-            playlist_download
+            playlist_download,
+            subtitle_downloader
             ):
         self.downloader = downloader
         self.query_by = query_by
         self.display_query = display_query
         self.url_loader = url_loader
         self.playlist_download = playlist_download
+        self.subtitle_downloader = subtitle_downloader
         self.format_obj = FormatsManager()
 
     def action_show_format(self):
         print("Show Format First Option")
         self.downloader.show_format_list()
+        return None
+
+    def action_download_subtitles(self):
+        print("Download Subtitles")
+        self.subtitle_downloader.download_subtitles()
         return None
 
     def action_quick_download(self):
@@ -58,7 +65,13 @@ class MenuActions:
         return None
 
     def action_query_by_status(self):
-        result = self.query_by.query_by_status("downloading")
+        # Use the same "incomplete" definition as the submenu's own
+        # "Show All Incompleted Downloads" action (error + downloading),
+        # so both entry points show the same data instead of two
+        # different subsets under the same label.
+        result = self.query_by.query_by_status(
+                statuses=["error", "downloading"]
+                )
         self.display_query.show_downloads_table(result)
         return "switch:query"
 
@@ -73,6 +86,11 @@ class MenuActions:
     def action_playlist_download(self):
         print("Playlist download option")
         self.playlist_download.playlist_download()
+        return None
+
+    def action_download_series_jellyfin(self):
+        print("Download TV Series (Jellyfin Format)")
+        self.playlist_download.download_series_jellyfin()
         return None
 
     def action_download_by_user_agent(self):
