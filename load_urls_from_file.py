@@ -46,79 +46,33 @@ class LoadURLsFromFile:
             return False
         return True
 
-    def show_formats_list_urls_from_file_and_download(self):
-        # Show formats list urls from file
-        # Options show formats list
-        yt_opts_show_list = {
-                'listformats': True,
-                'quiet': True,
-                'skip_download': True
-                }
-        # Options Download
+    def _process_urls_from_file(self, options_mode, fixed_options=None,
+                                 show_format_list=False):
+        """Shared loop used by all three public download-from-file
+        methods below. They only differed in how yt_opts was built and
+        whether a format list was shown first — everything else (reading
+        URLs, validating, showing the status bar, looping) was duplicated
+        three times.
+
+        options_mode:
+            'once'    -> use fixed_options, built once for the whole batch
+            'per_url' -> call _build_download_options() fresh for each URL
+                         (prompts the user again every time)
+        """
+        yt_opts = fixed_options
         url, total_urls = self.read_url_from_file()
         if url is None:
-            print("❗No URLs found in file!")
+            print("No URLs found in file!")
             return False
 
         print(f"Total urls remaining: {total_urls}")
         while url is not None:
             if not self._validate_url(url):
-                print(f"❗Skipping invalid URL: {url}")
-                url, total_urls = self.read_url_from_file()
-                continue
-            # Show statusbar
-            result = self.query_obj.query_by_url(url)
-            if result is None:
-                new_id = self.status_obj._generate_id()
-                self.display_obj.show_not_found(new_id, total_urls)
-            else:
-                self.display_obj.show_from_file(result, total_urls)
-            # Show formats list
-            self.core.execute_core(url, yt_opts_show_list)
-            # Download URL
-            yt_opts = self.core._build_download_options()
-            self.core.execute_core(url, yt_opts)
-            url, total_urls = self.read_url_from_file()
-            print(f"Total urls remaining: {total_urls}")
-
-    def downloader_from_file_best_format(self):
-        # Download urls from file
-        yt_opts = self.core.prepare_and_build_options(format_id='best')
-        url, total_urls = self.read_url_from_file()
-        if url is None:
-            print("❗No URLs found in file!")
-            return False
-        print(f"Total urls remaining: {total_urls}")
-        while url is not None:
-            if not self._validate_url(url):
-                print(f"❗Skipping invalid URL: {url}")
-                url, total_urls = self.read_url_from_file()
-                continue
-            # Show statusbar
-            result = self.query_obj.query_by_url(url)
-            if result is None:
-                new_id = self.status_obj._generate_id()
-                self.display_obj.show_not_found(new_id, total_urls)
-            else:
-                self.display_obj.show_from_file(result, total_urls)
-            self.core.execute_core(url, yt_opts)
-            url, total_urls = self.read_url_from_file()
-            print(f"Total urls remaining: {total_urls}")
-
-    def downloader_from_file_with_select_format(self):
-
-        yt_opts = self.core._build_download_options()
-        url, total_urls = self.read_url_from_file()
-        if url is None:
-            print("❗ No URLs found in file!")
-            return False
-        print(f"Total urls remaining: {total_urls}") 
-        while url is not None:
-            if not self._validate_url(url):
-                print(f"❗Skipping invalid URL: {url}")
+                print(f"Skipping invalid URL: {url}")
                 url, total_urls = self.read_url_from_file()
                 print(f"Total urls remaining: {total_urls}")
                 continue
+
             # Show statusbar
             result = self.query_obj.query_by_url(url)
             if result is None:
@@ -126,5 +80,34 @@ class LoadURLsFromFile:
                 self.display_obj.show_not_found(new_id, total_urls)
             else:
                 self.display_obj.show_from_file(result, total_urls)
+
+            if show_format_list:
+                self.core.execute_core(url, {
+                    'listformats': True,
+                    'quiet': True,
+                    'skip_download': True,
+                })
+
+            if options_mode == 'per_url':
+                yt_opts = self.core._build_download_options()
+
             self.core.execute_core(url, yt_opts)
             url, total_urls = self.read_url_from_file()
+            print(f"Total urls remaining: {total_urls}")
+
+    def show_formats_list_urls_from_file_and_download(self):
+        return self._process_urls_from_file(
+            options_mode='per_url', show_format_list=True
+        )
+
+    def downloader_from_file_best_format(self):
+        yt_opts = self.core.prepare_and_build_options(format_id='best')
+        return self._process_urls_from_file(
+            options_mode='once', fixed_options=yt_opts
+        )
+
+    def downloader_from_file_with_select_format(self):
+        yt_opts = self.core._build_download_options()
+        return self._process_urls_from_file(
+            options_mode='once', fixed_options=yt_opts
+        )

@@ -73,17 +73,6 @@ else
     echo "All dependencies from requirements.txt are already installed."
 fi
 
-# --- Step 6: extra dependencies used only by the one-time Supabase admin
-# scripts (fix_permissions.py / migrate_history.py) ---
-for extra in pg8000 certifi; do
-    if python -m pip show "$extra" >/dev/null 2>&1; then
-        echo "  [ok]      $extra"
-    else
-        echo "  [missing] $extra -> installing"
-        python -m pip install "$extra"
-    fi
-done
-
 echo ""
 echo "Setup complete."
 echo "Virtual environment: $ACTIVE_VENV"
